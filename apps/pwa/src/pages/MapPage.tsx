@@ -58,9 +58,17 @@ export const MapPage: React.FC = () => {
     // Añadir control de zoom abajo a la derecha
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // CartoDB Positron / OSM tiles (diseño limpio y profesional acorde al tema)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    // Capa de mosaicos OpenStreetMap configurable por variable de entorno
+    const customTileUrl = import.meta.env.VITE_OSM_TILE_URL;
+    const apiKey = import.meta.env.VITE_MAP_API_KEY;
+
+    let tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    if (customTileUrl) {
+      tileUrl = apiKey ? customTileUrl.replace('{apiKey}', apiKey) : customTileUrl;
+    }
+
+    L.tileLayer(tileUrl, {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
       maxZoom: 19
     }).addTo(map);
 

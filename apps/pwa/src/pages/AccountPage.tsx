@@ -44,12 +44,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
     setTimeout(() => setMessage(null), 3000);
   };
 
-  const handleToggleAdminDemo = (role: 'USUARIO' | 'ADMIN') => {
-    setUser({ ...user, role });
-    setMessage(`Rol cambiado a ${role}.`);
-    setTimeout(() => setMessage(null), 3000);
-  };
-
   const handleClearDrafts = async () => {
     await offlineDb.clearAll();
     setDraftCount(0);
@@ -64,7 +58,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
           Cuenta y configuración
         </h1>
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-          Gestiona tu perfil, rol, preferencias visuales y almacenamiento.
+          Gestiona tu perfil, preferencias visuales y almacenamiento.
         </p>
       </section>
 
@@ -159,51 +153,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
             <Mail size={14} /> Correo: {user.email}
           </div>
         )}
-
-        {/* Selector de rol de prueba (Usuario / Admin) */}
-        <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: '14px', marginTop: '10px' }}>
-          <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>
-            Cambiar rol activo (Demo):
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={() => handleToggleAdminDemo('USUARIO')}
-              className="glass"
-              style={{
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 'var(--text-xs)',
-                fontWeight: !isAdmin ? 600 : 400,
-                border: !isAdmin ? '2px solid var(--accent)' : '1px solid var(--hairline)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              <User size={14} /> Usuario
-            </button>
-            <button
-              type="button"
-              onClick={() => handleToggleAdminDemo('ADMIN')}
-              className="glass"
-              style={{
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 'var(--text-xs)',
-                fontWeight: isAdmin ? 600 : 400,
-                border: isAdmin ? '2px solid var(--accent)' : '1px solid var(--hairline)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              <ShieldCheck size={14} /> Administrador
-            </button>
-          </div>
-        </div>
 
         {/* Acceso a bandeja de gestión si es Admin */}
         {isAdmin && (

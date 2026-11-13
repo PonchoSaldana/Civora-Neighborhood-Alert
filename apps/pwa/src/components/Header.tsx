@@ -52,8 +52,8 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
           src="/logo.png"
           alt="Civora"
           style={{
-            width: '36px',
-            height: '36px',
+            width: '46px',
+            height: '46px',
             objectFit: 'contain',
             display: 'block'
           }}

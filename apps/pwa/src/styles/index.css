@@ -157,3 +157,125 @@ h1, h2, h3, h4, h5 {
   margin-top: var(--space-1);
 }
 
+/* ==========================================================================
+   Mejoras Responsivas para Vista de Computadora (Desktop / Laptop)
+   ========================================================================== */
+
+.desktop-only {
+  display: none !important;
+}
+
+.mobile-only {
+  display: flex;
+}
+
+.desktop-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  font-weight: 500;
+  text-decoration: none;
+  transition: background var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease);
+}
+
+.desktop-nav-link:hover {
+  color: var(--text);
+  background: var(--glass);
+}
+
+.desktop-nav-link.active {
+  color: var(--accent);
+  background: var(--glass-strong);
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  body {
+    padding-bottom: 32px;
+  }
+
+  .mobile-only {
+    display: none !important;
+  }
+
+  .desktop-only {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1240px;
+    padding: 0 var(--space-6);
+  }
+
+  .desktop-grid-home {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .desktop-incidents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+
+  .desktop-grid-detail {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .desktop-grid-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .desktop-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* Split Layout para Mapa en Computadoras */
+  .map-page-wrapper {
+    flex-direction: row !important;
+    height: calc(100vh - 96px) !important;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+    gap: 16px;
+  }
+
+  .map-sidebar-desktop {
+    width: 420px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .map-sidebar-scroll {
+    flex: 1;
+    overflow-y: auto;
+    max-height: none !important;
+  }
+
+  .map-canvas-container {
+    flex: 1;
+    height: 100%;
+    margin: 0 !important;
+  }
+}
+
+

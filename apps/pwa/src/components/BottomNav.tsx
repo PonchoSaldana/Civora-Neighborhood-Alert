@@ -5,7 +5,7 @@ import { Home, MapPin, PlusCircle, FileText, User } from 'lucide-react';
 export const BottomNav: React.FC = () => {
   return (
     <nav
-      className="glass-pill"
+      className="glass-pill mobile-only"
       style={{
         position: 'fixed',
         bottom: 'calc(12px + env(safe-area-inset-bottom))',

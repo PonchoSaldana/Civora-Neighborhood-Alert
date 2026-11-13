@@ -74,145 +74,213 @@ export const HomePage: React.FC = () => {
         </div>
       )}
 
-      {/* Header section */}
-      <section style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+      {/* Layout Grid Responsivo para Computadora */}
+      <div className="desktop-grid-home">
+        {/* Columna Principal: Filtros y Lista de Incidentes */}
         <div>
-          <h1 style={{ fontSize: 'var(--text-xl)', marginBottom: '4px' }}>
-            Incidentes en tu comunidad
-          </h1>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-            Consulta reportes cercanos o confirma incidentes existentes para evitar duplicados.
-          </p>
-        </div>
+          {/* Header section */}
+          <section style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <h1 style={{ fontSize: 'var(--text-xl)', marginBottom: '4px' }}>
+                Incidentes en tu comunidad
+              </h1>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                Consulta reportes cercanos o confirma incidentes existentes para evitar duplicados.
+              </p>
+            </div>
 
-        <Link
-          to="/mapa"
-          className="btn-secondary"
-          style={{ height: '36px', fontSize: 'var(--text-xs)', gap: '6px', whiteSpace: 'nowrap' }}
-        >
-          <MapPin size={15} color="var(--accent)" /> Ver en el mapa
-        </Link>
-      </section>
+            <Link
+              to="/mapa"
+              className="btn-secondary mobile-only"
+              style={{ height: '36px', fontSize: 'var(--text-xs)', gap: '6px', whiteSpace: 'nowrap' }}
+            >
+              <MapPin size={15} color="var(--accent)" /> Ver en el mapa
+            </Link>
+          </section>
 
-      {/* Filter and Search Bar */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-        <div style={{ position: 'relative' }}>
-          <Search
-            size={18}
-            style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-muted)'
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Filtrar por colonia o zona..."
-            value={searchArea}
-            onChange={(e) => setSearchArea(e.target.value)}
-            className="form-input"
-            style={{ paddingLeft: '38px', height: '42px' }}
-          />
-        </div>
+          {/* Filter and Search Bar */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+            <div style={{ position: 'relative' }}>
+              <Search
+                size={18}
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted)'
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Filtrar por colonia o zona..."
+                value={searchArea}
+                onChange={(e) => setSearchArea(e.target.value)}
+                className="form-input"
+                style={{ paddingLeft: '38px', height: '42px' }}
+              />
+            </div>
 
-        {/* Category Pills */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '8px',
-            overflowX: 'auto',
-            paddingBottom: '4px',
-            scrollbarWidth: 'none'
-          }}
-        >
-          <button
-            onClick={() => setSelectedCategory('all')}
-            className="glass"
-            style={{
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-pill)',
-              fontSize: 'var(--text-xs)',
-              fontWeight: selectedCategory === 'all' ? 600 : 400,
-              background: selectedCategory === 'all' ? 'var(--accent)' : 'var(--glass)',
-              color: selectedCategory === 'all' ? 'var(--on-accent)' : 'var(--text)',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            Todas las categorías
-          </button>
-          {Object.entries(CATEGORY_LABELS).map(([catKey, label]) => (
-            <button
-              key={catKey}
-              onClick={() => setSelectedCategory(catKey)}
-              className="glass"
+            {/* Category Pills */}
+            <div
               style={{
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-pill)',
-                fontSize: 'var(--text-xs)',
-                fontWeight: selectedCategory === catKey ? 600 : 400,
-                background: selectedCategory === catKey ? 'var(--accent)' : 'var(--glass)',
-                color: selectedCategory === catKey ? 'var(--on-accent)' : 'var(--text)',
-                whiteSpace: 'nowrap'
+                display: 'flex',
+                gap: '8px',
+                overflowX: 'auto',
+                paddingBottom: '4px',
+                scrollbarWidth: 'none'
               }}
             >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+              <button
+                onClick={() => setSelectedCategory('all')}
+                className="glass"
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-pill)',
+                  fontSize: 'var(--text-xs)',
+                  fontWeight: selectedCategory === 'all' ? 600 : 400,
+                  background: selectedCategory === 'all' ? 'var(--accent)' : 'var(--glass)',
+                  color: selectedCategory === 'all' ? 'var(--on-accent)' : 'var(--text)',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Todas las categorías
+              </button>
+              {Object.entries(CATEGORY_LABELS).map(([catKey, label]) => (
+                <button
+                  key={catKey}
+                  onClick={() => setSelectedCategory(catKey)}
+                  className="glass"
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: 'var(--text-xs)',
+                    fontWeight: selectedCategory === catKey ? 600 : 400,
+                    background: selectedCategory === catKey ? 'var(--accent)' : 'var(--glass)',
+                    color: selectedCategory === catKey ? 'var(--on-accent)' : 'var(--text)',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Incidents List */}
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {[1, 2, 3].map((n) => (
+          {/* Incidents List (Grid en escritorio) */}
+          {loading ? (
+            <div className="desktop-incidents-grid">
+              {[1, 2, 3, 4].map((n) => (
+                <div
+                  key={n}
+                  className="surface-card"
+                  style={{
+                    height: '140px',
+                    opacity: 0.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Cargando reportes...</span>
+                </div>
+              ))}
+            </div>
+          ) : filteredIncidents.length === 0 ? (
             <div
-              key={n}
               className="surface-card"
               style={{
-                height: '110px',
-                opacity: 0.5,
+                padding: '36px 20px',
+                textAlign: 'center',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center'
+                gap: '12px'
               }}
             >
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Cargando reportes...</span>
+              <AlertCircle size={32} color="var(--text-muted)" />
+              <p style={{ fontSize: 'var(--text-md)', color: 'var(--text)' }}>
+                No se encontraron incidentes con los filtros aplicados.
+              </p>
+              <button onClick={() => { setSelectedCategory('all'); setSearchArea(''); }} className="btn-secondary">
+                Restablecer filtros
+              </button>
             </div>
-          ))}
+          ) : (
+            <div className="desktop-incidents-grid">
+              {filteredIncidents.map((incident) => (
+                <IncidentCard
+                  key={incident.id}
+                  incident={incident}
+                  onConfirm={handleConfirm}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      ) : filteredIncidents.length === 0 ? (
-        <div
-          className="surface-card"
-          style={{
-            padding: '36px 20px',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '12px'
-          }}
-        >
-          <AlertCircle size={32} color="var(--text-muted)" />
-          <p style={{ fontSize: 'var(--text-md)', color: 'var(--text)' }}>
-            No se encontraron incidentes con los filtros aplicados.
-          </p>
-          <button onClick={() => { setSelectedCategory('all'); setSearchArea(''); }} className="btn-secondary">
-            Restablecer filtros
-          </button>
-        </div>
-      ) : (
-        <div>
-          {filteredIncidents.map((incident) => (
-            <IncidentCard
-              key={incident.id}
-              incident={incident}
-              onConfirm={handleConfirm}
-            />
-          ))}
-        </div>
-      )}
+
+        {/* Barra Lateral Desktop (Visible solo en computadoras) */}
+        <aside className="desktop-only" style={{ flexDirection: 'column', gap: '16px', position: 'sticky', top: '80px' }}>
+          {/* Tarjeta de Acción Rápida */}
+          <div className="surface-card" style={{ padding: '20px' }}>
+            <h2 style={{ fontSize: 'var(--text-md)', fontWeight: 600, marginBottom: '8px' }}>
+              Acciones comunitarias
+            </h2>
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.5 }}>
+              ¿Detectaste un bache, fuga o luminaria rota? Repórtalo con o sin fotografía.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Link
+                to="/nuevo"
+                className="btn-primary"
+                style={{ width: '100%', height: '42px', fontSize: 'var(--text-sm)', gap: '8px' }}
+              >
+                + Crear nuevo reporte
+              </Link>
+              <Link
+                to="/mapa"
+                className="btn-secondary"
+                style={{ width: '100%', height: '38px', fontSize: 'var(--text-xs)', gap: '6px' }}
+              >
+                <MapPin size={15} color="var(--accent)" /> Explorar mapa completo
+              </Link>
+            </div>
+          </div>
+
+          {/* Tarjeta de Resumen del Vecindario */}
+          <div className="surface-card" style={{ padding: '20px' }}>
+            <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: '12px', color: 'var(--text)' }}>
+              Estado del vecindario
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="glass" style={{ padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--accent)' }}>
+                  {incidents.length}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Total reportes</div>
+              </div>
+              <div className="glass" style={{ padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--st-proceso)' }}>
+                  {incidents.filter(i => i.status !== 'RESUELTO' && i.status !== 'NO_PROCEDENTE').length}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>En atención</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Guía Rápida */}
+          <div className="glass" style={{ padding: '16px' }}>
+            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>
+              💡 ¿Cómo colaborar?
+            </div>
+            <ul style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.6, paddingLeft: '16px', margin: 0 }}>
+              <li>Apoya los reportes existentes para elevar su prioridad.</li>
+              <li>El motor inteligente detecta y unifica reportes repetidos.</li>
+              <li>Puedes comentar en cualquier reporte para aportar detalles.</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
     </main>
   );
 };

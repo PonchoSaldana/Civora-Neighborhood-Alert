@@ -250,180 +250,196 @@ export const MapPage: React.FC = () => {
     });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)', position: 'relative' }}>
-      {/* ── Barra superior de controles del mapa ── */}
-      <div
-        className="glass"
-        style={{
-          margin: '0 12px 10px 12px',
-          padding: '8px 12px',
-          borderRadius: 'var(--radius-md)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          zIndex: 20
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <MapPin size={18} color="var(--accent)" />
-            <h1 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, margin: 0 }}>
-              Mapa de incidentes cercanos
-            </h1>
-          </div>
+    <div className="map-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)', position: 'relative' }}>
+      {/* ── Contenedor Lateral en Desktop / Superior en Móvil ── */}
+      <div className="map-sidebar-desktop" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* Barra de controles del mapa */}
+        <div
+          className="glass"
+          style={{
+            margin: '0 12px 0 12px',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            zIndex: 20
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MapPin size={18} color="var(--accent)" />
+              <h1 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, margin: 0 }}>
+                Incidentes cercanos
+              </h1>
+            </div>
 
-          <button
-            onClick={() => getUserLocation()}
-            disabled={locating}
-            className="btn-primary"
-            style={{ height: '32px', fontSize: 'var(--text-xs)', padding: '0 10px', gap: '4px' }}
-          >
-            <Compass size={14} className={locating ? 'spin' : ''} />
-            <span>{locating ? 'Localizando...' : userCoords ? 'Centrar en mí' : 'Mi ubicación'}</span>
-          </button>
-        </div>
-
-        {/* Filtros de distancia (Radio) */}
-        {userCoords && (
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', overflowX: 'auto', paddingBottom: '2px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Radio:</span>
-            {[
-              { label: 'Todos', val: null },
-              { label: '500 m', val: 500 },
-              { label: '1 km', val: 1000 },
-              { label: '3 km', val: 3000 },
-              { label: '5 km', val: 5000 }
-            ].map((r) => (
-              <button
-                key={r.label}
-                onClick={() => setActiveRadius(r.val)}
-                className="glass"
-                style={{
-                  padding: '3px 8px',
-                  borderRadius: 'var(--radius-pill)',
-                  fontSize: '11px',
-                  fontWeight: activeRadius === r.val ? 600 : 400,
-                  background: activeRadius === r.val ? 'var(--accent)' : 'transparent',
-                  color: activeRadius === r.val ? 'var(--on-accent)' : 'var(--text)',
-                  border: '1px solid var(--hairline)',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Filtro por categorías */}
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
-          <button
-            onClick={() => setSelectedCategory('all')}
-            style={{
-              padding: '3px 10px',
-              borderRadius: 'var(--radius-pill)',
-              fontSize: '11px',
-              fontWeight: selectedCategory === 'all' ? 600 : 400,
-              background: selectedCategory === 'all' ? 'var(--accent)' : 'var(--glass)',
-              color: selectedCategory === 'all' ? 'var(--on-accent)' : 'var(--text)',
-              border: '1px solid var(--hairline)',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            Todas
-          </button>
-          {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
             <button
-              key={k}
-              onClick={() => setSelectedCategory(k)}
+              onClick={() => getUserLocation()}
+              disabled={locating}
+              className="btn-primary"
+              style={{ height: '32px', fontSize: 'var(--text-xs)', padding: '0 10px', gap: '4px' }}
+            >
+              <Compass size={14} className={locating ? 'spin' : ''} />
+              <span>{locating ? 'Localizando...' : userCoords ? 'Centrar en mí' : 'Mi ubicación'}</span>
+            </button>
+          </div>
+
+          {/* Filtros de distancia (Radio) */}
+          {userCoords && (
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', overflowX: 'auto', paddingBottom: '2px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Radio:</span>
+              {[
+                { label: 'Todos', val: null },
+                { label: '500 m', val: 500 },
+                { label: '1 km', val: 1000 },
+                { label: '3 km', val: 3000 },
+                { label: '5 km', val: 5000 }
+              ].map((r) => (
+                <button
+                  key={r.label}
+                  onClick={() => setActiveRadius(r.val)}
+                  className="glass"
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: '11px',
+                    fontWeight: activeRadius === r.val ? 600 : 400,
+                    background: activeRadius === r.val ? 'var(--accent)' : 'transparent',
+                    color: activeRadius === r.val ? 'var(--on-accent)' : 'var(--text)',
+                    border: '1px solid var(--hairline)',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Filtro por categorías */}
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
+            <button
+              onClick={() => setSelectedCategory('all')}
               style={{
                 padding: '3px 10px',
                 borderRadius: 'var(--radius-pill)',
                 fontSize: '11px',
-                fontWeight: selectedCategory === k ? 600 : 400,
-                background: selectedCategory === k ? 'var(--accent)' : 'var(--glass)',
-                color: selectedCategory === k ? 'var(--on-accent)' : 'var(--text)',
+                fontWeight: selectedCategory === 'all' ? 600 : 400,
+                background: selectedCategory === 'all' ? 'var(--accent)' : 'var(--glass)',
+                color: selectedCategory === 'all' ? 'var(--on-accent)' : 'var(--text)',
                 border: '1px solid var(--hairline)',
                 whiteSpace: 'nowrap'
               }}
             >
-              {label}
+              Todas
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Contenedor del Mapa ── */}
-      <div style={{ flex: 1, position: 'relative', margin: '0 12px', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--hairline)' }}>
-        <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
-      </div>
-
-      {/* ── Panel / Carrusel inferior con reportes cercanos ── */}
-      <div
-        className="glass-strong"
-        style={{
-          margin: '10px 12px 0 12px',
-          padding: '10px 14px',
-          borderRadius: 'var(--radius-md)',
-          maxHeight: '140px',
-          overflowY: 'auto'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>
-            {userCoords ? `Reportes ordenados por cercanía (${sortedIncidents.length})` : `Reportes en el área (${sortedIncidents.length})`}
-          </span>
-          <Link to="/" style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 500 }}>
-            Ver lista completa
-          </Link>
-        </div>
-
-        {sortedIncidents.length === 0 ? (
-          <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0' }}>
-            No se encontraron incidentes con los filtros actuales.
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {sortedIncidents.slice(0, 5).map((inc) => (
-              <div
-                key={inc.id}
-                onClick={() => handleSelectIncident(inc)}
-                className="surface-card"
+            {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setSelectedCategory(k)}
                 style={{
-                  padding: '8px 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
-                  border: selectedIncident?.id === inc.id ? '2px solid var(--accent)' : '1px solid var(--hairline)'
+                  padding: '3px 10px',
+                  borderRadius: 'var(--radius-pill)',
+                  fontSize: '11px',
+                  fontWeight: selectedCategory === k ? 600 : 400,
+                  background: selectedCategory === k ? 'var(--accent)' : 'var(--glass)',
+                  color: selectedCategory === k ? 'var(--on-accent)' : 'var(--text)',
+                  border: '1px solid var(--hairline)',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{CATEGORY_LABELS[inc.category]}</span>
-                    {inc.distanceM !== undefined && (
-                      <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--accent)' }}>
-                        • a {inc.distanceM < 1000 ? `${inc.distanceM} m` : `${(inc.distanceM / 1000).toFixed(1)} km`}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {inc.title}
-                  </div>
-                </div>
-
-                <Link
-                  to={`/incidente/${inc.id}`}
-                  className="btn-secondary"
-                  style={{ height: '28px', fontSize: '11px', padding: '0 8px', flexShrink: 0 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Ver →
-                </Link>
-              </div>
+                {label}
+              </button>
             ))}
           </div>
-        )}
+        </div>
+
+        {/* ── Lista de reportes en Sidebar (Desktop) / Móvil abajo ── */}
+        <div
+          className="glass-strong map-sidebar-scroll"
+          style={{
+            margin: '8px 12px 0 12px',
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-md)',
+            maxHeight: '140px',
+            overflowY: 'auto'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
+              {userCoords ? `Por cercanía (${sortedIncidents.length})` : `En el área (${sortedIncidents.length})`}
+            </span>
+            <Link to="/" style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 500 }}>
+              Ver lista completa
+            </Link>
+          </div>
+
+          {sortedIncidents.length === 0 ? (
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>
+              No se encontraron incidentes con los filtros actuales.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {sortedIncidents.map((inc) => (
+                <div
+                  key={inc.id}
+                  onClick={() => handleSelectIncident(inc)}
+                  className="surface-card"
+                  style={{
+                    padding: '10px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    borderRadius: 'var(--radius-sm)',
+                    border: selectedIncident?.id === inc.id ? '2px solid var(--accent)' : '1px solid var(--hairline)',
+                    transition: 'border-color var(--motion-fast) var(--ease)'
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{CATEGORY_LABELS[inc.category]}</span>
+                      {inc.distanceM !== undefined && (
+                        <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--accent)' }}>
+                          • a {inc.distanceM < 1000 ? `${inc.distanceM} m` : `${(inc.distanceM / 1000).toFixed(1)} km`}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {inc.title}
+                    </div>
+                  </div>
+
+                  <Link
+                    to={`/incidente/${inc.id}`}
+                    className="btn-secondary"
+                    style={{ height: '28px', fontSize: '11px', padding: '0 10px', flexShrink: 0 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Ver →
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Contenedor del Mapa (Flex 1 en Desktop) ── */}
+      <div
+        className="map-canvas-container"
+        style={{
+          flex: 1,
+          position: 'relative',
+          margin: '8px 12px 0 12px',
+          borderRadius: 'var(--radius-md)',
+          overflow: 'hidden',
+          border: '1px solid var(--hairline)',
+          minHeight: '360px'
+        }}
+      >
+        <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
       </div>
     </div>
   );

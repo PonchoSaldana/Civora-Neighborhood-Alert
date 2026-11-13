@@ -84,8 +84,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
         </div>
       )}
 
-      {/* 1. Datos de la cuenta */}
-      <section className="surface-card" style={{ padding: '20px', marginBottom: '16px' }}>
+      {/* Contenedor Responsivo Grid en Desktop */}
+      <div className="desktop-grid-2col">
+        {/* Columna Izquierda: Datos de la cuenta */}
+        <div>
+          {/* 1. Datos de la cuenta */}
+          <section className="surface-card" style={{ padding: '20px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
           <div
             style={{
@@ -237,7 +241,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
           )}
         </div>
       </section>
+    </div>
 
+    {/* Columna Derecha: Tema, Almacenamiento y Sistema */}
+    <div>
       {/* 2. Selector de tema visual (Sistema, Claro, Oscuro) */}
       <section className="surface-card" style={{ padding: '20px', marginBottom: '16px' }}>
         <h2 style={{ fontSize: 'var(--text-md)', marginBottom: '12px' }}>
@@ -348,7 +355,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
           <ExternalLink size={14} /> Repositorio en GitHub
         </a>
       </section>
-    </main>
+    </div>
+  </div>
+</main>
   );
 };
 

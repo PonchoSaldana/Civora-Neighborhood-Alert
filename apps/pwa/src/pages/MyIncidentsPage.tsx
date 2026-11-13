@@ -192,7 +192,7 @@ export const MyIncidentsPage: React.FC = () => {
             </Link>
           </div>
         ) : (
-          <div>
+          <div className="desktop-incidents-grid">
             {incidents.map((incident) => (
               <IncidentCard
                 key={incident.id}

@@ -193,8 +193,11 @@ export const NewIncidentPage: React.FC = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="surface-card" style={{ padding: '20px' }}>
-        {/* Identificación del autor: anónimo o con nombre */}
+      <form onSubmit={handleSubmit} className="surface-card" style={{ padding: '24px' }}>
+        <div className="desktop-grid-form">
+          {/* Columna Izquierda: Identificación, Categoría, Título, Descripción */}
+          <div>
+            {/* Identificación del autor: anónimo o con nombre */}
         <div className="form-group" style={{ marginBottom: '20px' }}>
           <label className="form-label" style={{ marginBottom: '8px' }}>
             ¿Cómo quieres identificarte en este reporte?
@@ -312,8 +315,11 @@ export const NewIncidentPage: React.FC = () => {
             {description.length}/600 caracteres
           </div>
         </div>
+          </div>
 
-        {/* 3. Fotografía opcional */}
+          {/* Columna Derecha: Foto, Ubicación y Envío */}
+          <div>
+            {/* 3. Fotografía opcional */}
         <div className="form-group">
           <label className="form-label">
             3. Evidencia fotográfica (opcional, máx. 5 MB)
@@ -408,11 +414,13 @@ export const NewIncidentPage: React.FC = () => {
           type="submit"
           disabled={submitting}
           className="btn-primary"
-          style={{ width: '100%', marginTop: '16px' }}
+          style={{ width: '100%', height: '46px', marginTop: '16px', fontSize: 'var(--text-md)' }}
         >
-          {submitting ? 'Enviando reporte...' : 'Enviar reporte'}
+          {submitting ? 'Enviando reporte...' : 'Publicar reporte'}
         </button>
-      </form>
+      </div>
+    </div>
+  </form>
     </main>
   );
 };

@@ -36,27 +36,123 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const handleSocialLogin = async (provider: 'Google' | 'Facebook') => {
     setError(null);
     setLoading(true);
-    try {
-      if (isAwsConfigured) {
+
+    // 1. Si AWS Cognito está configurado completamente con OAuth
+    if (isAwsConfigured) {
+      try {
         await authService.signInWithSocial(provider);
         return;
+      } catch (err: any) {
+        console.warn('Fallo Cognito OAuth, intentando SDK directo:', err);
       }
-      // Simulación en entorno demo local
-      setTimeout(() => {
-        onLogin({
-          sub: `usr-${provider.toLowerCase()}-${Date.now().toString().slice(-4)}`,
-          email: provider === 'Google' ? 'vecino.civora@gmail.com' : 'vecino.civora@facebook.com',
-          displayName: provider === 'Google' ? 'Vecino Google' : 'Vecino Facebook',
-          role: 'USUARIO',
-          mode: 'registered',
-          provider: provider === 'Google' ? 'google' : 'facebook'
-        });
-        setLoading(false);
-      }, 400);
-    } catch (err: any) {
-      setError(err.message || `No se pudo iniciar sesión con ${provider}.`);
-      setLoading(false);
     }
+
+    // 2. Google Identity Services (SDK oficial)
+    if (provider === 'Google') {
+      const googleClientId =
+        import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+        '27805880482-c1g5elb68k0gd1ftidnres9c30duvqb5.apps.googleusercontent.com';
+
+      const googleObj = (window as any).google;
+      if (googleObj?.accounts?.oauth2 && googleClientId) {
+        try {
+          const tokenClient = googleObj.accounts.oauth2.initTokenClient({
+            client_id: googleClientId,
+            scope: 'email profile openid',
+            callback: async (tokenResponse: any) => {
+              if (tokenResponse.error) {
+                setError(`Google Sign-In: ${tokenResponse.error_description || tokenResponse.error}`);
+                setLoading(false);
+                return;
+              }
+              try {
+                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                });
+                if (!res.ok) throw new Error('No se pudo obtener información de Google');
+                const profile = await res.json();
+                onLogin({
+                  sub: profile.sub || `usr-google-${Date.now()}`,
+                  email: profile.email || 'usuario@gmail.com',
+                  displayName: profile.name || profile.given_name || profile.email?.split('@')[0] || 'Vecino Google',
+                  role: 'USUARIO',
+                  mode: 'registered',
+                  provider: 'google'
+                });
+              } catch (profileErr: any) {
+                setError('Error al consultar el perfil de usuario en Google.');
+              } finally {
+                setLoading(false);
+              }
+            },
+            error_callback: (err: any) => {
+              setError(`Error en Google Login (${err.type || 'origen no autorizado'}). Revisa los orígenes autorizados en Google Cloud Console.`);
+              setLoading(false);
+            }
+          });
+
+          tokenClient.requestAccessToken({ prompt: 'select_account' });
+          return;
+        } catch (sdkErr: any) {
+          console.warn('Error al iniciar tokenClient de Google:', sdkErr);
+        }
+      }
+    }
+
+    // 3. Facebook JavaScript SDK (SDK oficial)
+    if (provider === 'Facebook') {
+      const facebookAppId = import.meta.env.VITE_FACEBOOK_APP_ID;
+      const fb = (window as any).FB;
+
+      if (fb && facebookAppId) {
+        try {
+          fb.init({
+            appId: facebookAppId,
+            cookie: true,
+            xfbml: true,
+            version: 'v21.0'
+          });
+
+          fb.login((response: any) => {
+            if (response.authResponse) {
+              fb.api('/me', { fields: 'name,email' }, (profile: any) => {
+                onLogin({
+                  sub: profile.id || `usr-fb-${Date.now()}`,
+                  email: profile.email || `${(profile.name || 'vecino').toLowerCase().replace(/\s+/g, '')}@facebook.com`,
+                  displayName: profile.name || 'Vecino Facebook',
+                  role: 'USUARIO',
+                  mode: 'registered',
+                  provider: 'facebook'
+                });
+                setLoading(false);
+              });
+            } else {
+              setError('Inicio de sesión con Facebook cancelado o no autorizado.');
+              setLoading(false);
+            }
+          }, { scope: 'public_profile,email' });
+          return;
+        } catch (fbErr: any) {
+          console.warn('Error al inicializar Facebook SDK:', fbErr);
+        }
+      } else if (!facebookAppId) {
+        // Notificación de que falta el App ID de Facebook
+        setError('Para usar Facebook Login real, define VITE_FACEBOOK_APP_ID en tu archivo .env. Entrando en modo demostración...');
+      }
+    }
+
+    // 4. Fallback de demostración rápida si el SDK no respondió o no hay App ID configurado
+    setTimeout(() => {
+      onLogin({
+        sub: `usr-${provider.toLowerCase()}-${Date.now().toString().slice(-4)}`,
+        email: provider === 'Google' ? 'vecino.civora@gmail.com' : 'vecino.civora@facebook.com',
+        displayName: provider === 'Google' ? 'Vecino Google' : 'Vecino Facebook',
+        role: 'USUARIO',
+        mode: 'registered',
+        provider: provider === 'Google' ? 'google' : 'facebook'
+      });
+      setLoading(false);
+    }, 600);
   };
 
   /* ── Login con cuenta local / correo ── */

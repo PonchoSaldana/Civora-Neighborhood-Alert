@@ -31,12 +31,11 @@ export function extractAuth(event: APIGatewayProxyEventV2): AuthContext {
   }
 
   const roles: UserRole[] = [];
-  if (groups.includes('ADMIN')) roles.push('ADMIN');
-  if (groups.includes('MANAGER')) roles.push('MANAGER');
-  if (groups.includes('REPORTER') || roles.length === 0) roles.push('REPORTER');
+  if (groups.includes('ADMIN') || groups.includes('MANAGER')) roles.push('ADMIN');
+  if (groups.includes('USUARIO') || groups.includes('REPORTER') || roles.length === 0) roles.push('USUARIO');
 
   const isAdmin = roles.includes('ADMIN');
-  const isManager = isAdmin || roles.includes('MANAGER');
+  const isManager = isAdmin;
 
   return {
     sub,

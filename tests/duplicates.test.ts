@@ -20,7 +20,9 @@ describe('Detección explicable de duplicados (Civora)', () => {
     areaId: 'Centro',
     coordinates: { latitude: 20.659698, longitude: -103.349609 },
     photoKeys: [],
-    confirmationCount: 1
+    confirmationCount: 1,
+    creatorDisplayName: 'Juan Vecino',
+    commentCount: 0
   };
 
   it('calcula distancia Haversine correctamente', () => {

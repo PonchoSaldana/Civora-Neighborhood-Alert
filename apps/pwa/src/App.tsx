@@ -14,7 +14,7 @@ import { AccountPage } from './pages/AccountPage.js';
 import { ManagerInboxPage } from './pages/ManagerInboxPage.js';
 
 const AppRoutes: React.FC = () => {
-  const { user, setUser, logout } = useAuth();
+  const { user, setUser, logout, isAdmin } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Si no ha elegido ninguna sesión ni modo invitado, mostramos la pantalla de bienvenida/login
@@ -72,8 +72,11 @@ const AppRoutes: React.FC = () => {
           {/* Detalle del incidente con comentarios y apoyo */}
           <Route path="/incidente/:id" element={<IncidentDetailPage />} />
 
-          {/* Bandeja de administración para rol ADMIN */}
-          <Route path="/bandeja" element={<ManagerInboxPage />} />
+          {/* Bandeja de administración — SOLO para rol ADMIN */}
+          <Route
+            path="/bandeja"
+            element={isAdmin ? <ManagerInboxPage /> : <Navigate to="/" replace />}
+          />
 
           {/* Redirección por defecto a inicio */}
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -9,7 +9,6 @@ import {
   Moon,
   Laptop,
   Trash2,
-  ExternalLink,
   LogOut,
   LogIn,
   Inbox,
@@ -286,23 +285,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
         </button>
       </section>
 
-      {/* 4. Enlace al repositorio GitHub */}
+      {/* 4. Acerca de Civora */}
       <section className="surface-card" style={{ padding: '20px' }}>
         <h2 style={{ fontSize: 'var(--text-md)', marginBottom: '6px' }}>
           Civora — Alerta Vecinal
         </h2>
-        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: 1.5 }}>
-          Plataforma comunitaria de reporte y seguimiento de incidentes con detección explicable de duplicados en AWS.
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          Plataforma comunitaria de reporte y seguimiento de incidentes en tu colonia. Versión 1.0.
         </p>
-        <a
-          href="https://github.com/PonchoSaldana/Civora-Neighborhood-Alert.git"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-secondary"
-          style={{ height: '36px', fontSize: 'var(--text-xs)', display: 'inline-flex', gap: '6px' }}
-        >
-          <ExternalLink size={14} /> Repositorio en GitHub
-        </a>
       </section>
     </div>
   </div>

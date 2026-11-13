@@ -67,12 +67,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
     setLoading(true);
     setTimeout(() => {
-      // Detectar admin por email de demo
-      const isAdmin = email.toLowerCase().includes('admin');
+      // Credenciales de administrador (demo)
+      const ADMIN_EMAIL = 'admin@civora.com';
+      const ADMIN_PASS  = 'admin1234';
+      const isAdmin = email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASS;
+      if (!isAdmin && email.toLowerCase() === ADMIN_EMAIL) {
+        setError('Contraseña incorrecta.');
+        setLoading(false);
+        return;
+      }
       onLogin({
         sub: `usr-${Date.now()}`,
         email,
-        displayName: email.split('@')[0],
+        displayName: isAdmin ? 'Administrador' : email.split('@')[0],
         role: isAdmin ? 'ADMIN' : 'USUARIO',
         mode: 'registered',
         provider: 'local'
@@ -329,9 +336,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </button>
           </div>
 
-          {/* Nota de demostración */}
+          {/* Nota discreta de versión */}
           <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '16px' }}>
-            Demo: usa un correo con la palabra "admin" para probar funciones de administrador.
+            Civora v1.0 — Plataforma comunitaria de reportes
           </p>
         </div>
       </div>

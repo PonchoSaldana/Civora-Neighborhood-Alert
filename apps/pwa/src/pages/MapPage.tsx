@@ -58,18 +58,19 @@ export const MapPage: React.FC = () => {
     // Añadir control de zoom abajo a la derecha
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Capa de mosaicos OpenStreetMap configurable por variable de entorno
+    // Capa de mosaicos OpenStreetMap (Oficial, libre y sin API key requerida)
     const customTileUrl = import.meta.env.VITE_OSM_TILE_URL;
     const apiKey = import.meta.env.VITE_MAP_API_KEY;
 
-    let tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-    if (customTileUrl) {
+    let tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    if (customTileUrl && customTileUrl.includes('{z}') && customTileUrl.includes('{x}')) {
       tileUrl = apiKey ? customTileUrl.replace('{apiKey}', apiKey) : customTileUrl;
     }
 
     L.tileLayer(tileUrl, {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
-      maxZoom: 19
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> colaboradores',
+      maxZoom: 19,
+      subdomains: ['a', 'b', 'c']
     }).addTo(map);
 
     const markersGroup = L.layerGroup().addTo(map);

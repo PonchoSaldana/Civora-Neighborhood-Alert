@@ -38,12 +38,13 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
     <header className="glass" style={{
       position: 'sticky', top: 0, zIndex: 50,
       margin: '8px auto 16px auto',
-      width: 'calc(100% - 24px)',
-      maxWidth: '1240px',
+      width: 'calc(100% - 32px)',
+      maxWidth: '1200px',
       padding: '10px 18px',
       borderRadius: 'var(--radius-lg)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      gap: '12px'
+      gap: '12px',
+      boxSizing: 'border-box'
     }}>
       {/* Logo */}
       <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flexShrink: 0 }}>

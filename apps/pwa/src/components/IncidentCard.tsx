@@ -106,6 +106,9 @@ export const IncidentCard: React.FC<IncidentCardProps> = ({
             src={incident.photoUrls[0]}
             alt="Evidencia fotográfica"
             loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none';
+            }}
             style={{
               width: '56px',
               height: '56px',
@@ -125,7 +128,9 @@ export const IncidentCard: React.FC<IncidentCardProps> = ({
           alignItems: 'center',
           marginTop: '10px',
           paddingTop: '8px',
-          borderTop: '1px solid var(--hairline)'
+          borderTop: '1px solid var(--hairline)',
+          flexWrap: 'wrap',
+          gap: '8px'
         }}
       >
         <span

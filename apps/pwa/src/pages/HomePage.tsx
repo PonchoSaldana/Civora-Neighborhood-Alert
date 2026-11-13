@@ -123,6 +123,7 @@ export const HomePage: React.FC = () => {
 
             {/* Category Pills */}
             <div
+              className="category-pills-bar"
               style={{
                 display: 'flex',
                 gap: '8px',
@@ -220,63 +221,75 @@ export const HomePage: React.FC = () => {
         </div>
 
         {/* Barra Lateral Desktop (Visible solo en computadoras) */}
-        <aside className="desktop-only" style={{ flexDirection: 'column', gap: '16px', position: 'sticky', top: '80px' }}>
+        <aside
+          className="desktop-only"
+          style={{
+            flexDirection: 'column',
+            gap: '14px',
+            position: 'sticky',
+            top: '80px',
+            width: '280px',
+            maxWidth: '280px',
+            flexShrink: 0,
+            boxSizing: 'border-box'
+          }}
+        >
           {/* Tarjeta de Acción Rápida */}
-          <div className="surface-card" style={{ padding: '20px' }}>
-            <h2 style={{ fontSize: 'var(--text-md)', fontWeight: 600, marginBottom: '8px' }}>
+          <div className="surface-card" style={{ padding: '16px' }}>
+            <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: '6px' }}>
               Acciones comunitarias
             </h2>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.5 }}>
-              ¿Detectaste un bache, fuga o luminaria rota? Repórtalo con o sin fotografía.
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '14px', lineHeight: 1.4 }}>
+              ¿Detectaste un desperfecto? Repórtalo con o sin fotografía.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <Link
                 to="/nuevo"
                 className="btn-primary"
-                style={{ width: '100%', height: '42px', fontSize: 'var(--text-sm)', gap: '8px' }}
+                style={{ width: '100%', height: '38px', fontSize: 'var(--text-xs)', gap: '6px' }}
               >
                 + Crear nuevo reporte
               </Link>
               <Link
                 to="/mapa"
                 className="btn-secondary"
-                style={{ width: '100%', height: '38px', fontSize: 'var(--text-xs)', gap: '6px' }}
+                style={{ width: '100%', height: '36px', fontSize: 'var(--text-xs)', gap: '6px' }}
               >
-                <MapPin size={15} color="var(--accent)" /> Explorar mapa completo
+                <MapPin size={14} color="var(--accent)" /> Explorar mapa
               </Link>
             </div>
           </div>
 
           {/* Tarjeta de Resumen del Vecindario */}
-          <div className="surface-card" style={{ padding: '20px' }}>
-            <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: '12px', color: 'var(--text)' }}>
+          <div className="surface-card" style={{ padding: '16px' }}>
+            <h3 style={{ fontSize: 'var(--text-xs)', fontWeight: 600, marginBottom: '10px', color: 'var(--text)' }}>
               Estado del vecindario
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div className="glass" style={{ padding: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--accent)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div className="glass" style={{ padding: '10px 8px', textAlign: 'center' }}>
+                <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--accent)' }}>
                   {incidents.length}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Total reportes</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Total reportes</div>
               </div>
-              <div className="glass" style={{ padding: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--st-proceso)' }}>
+              <div className="glass" style={{ padding: '10px 8px', textAlign: 'center' }}>
+                <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--st-proceso)' }}>
                   {incidents.filter(i => i.status !== 'RESUELTO' && i.status !== 'NO_PROCEDENTE').length}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>En atención</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>En atención</div>
               </div>
             </div>
           </div>
 
           {/* Guía Rápida */}
-          <div className="glass" style={{ padding: '16px' }}>
-            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>
+          <div className="glass" style={{ padding: '14px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>
               💡 ¿Cómo colaborar?
             </div>
-            <ul style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.6, paddingLeft: '16px', margin: 0 }}>
-              <li>Apoya los reportes existentes para elevar su prioridad.</li>
-              <li>El motor inteligente detecta y unifica reportes repetidos.</li>
-              <li>Puedes comentar en cualquier reporte para aportar detalles.</li>
+            <ul style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5, paddingLeft: '14px', margin: 0 }}>
+              <li>Apoya reportes para elevar su prioridad.</li>
+              <li>La IA detecta reportes repetidos.</li>
+              <li>Aporta detalles comentando en reportes.</li>
             </ul>
           </div>
         </aside>

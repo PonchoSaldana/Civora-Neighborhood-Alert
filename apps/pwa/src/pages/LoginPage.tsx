@@ -153,7 +153,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             Civora
           </h1>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Alerta y seguridad colaborativa vecinal
           </p>
         </div>
 

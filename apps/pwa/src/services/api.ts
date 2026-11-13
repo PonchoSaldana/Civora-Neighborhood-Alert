@@ -29,7 +29,7 @@ const SYNTHETIC: Incident[] = [
     updatedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
     areaId: 'Sector Reforma',
     coordinates: { latitude: 20.6780, longitude: -103.3590 },
-    photoKeys: [], photoUrls: ['https://images.unsplash.com/photo-1584463699039-b9d901fdb0b7?w=600&auto=format&fit=crop&q=80'],
+    photoKeys: [], photoUrls: ['https://images.unsplash.com/photo-1541888946425-d0fbb186156f?w=600&auto=format&fit=crop&q=80'],
     confirmationCount: 7, commentCount: 1, isProcessing: false
   },
   {

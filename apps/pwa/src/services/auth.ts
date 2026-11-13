@@ -12,8 +12,8 @@ export interface AuthUser {
 async function getAmplifyAuth() {
   if (!isAwsConfigured) return null;
   try {
-    const { fetchAuthSession, getCurrentUser, signIn, signOut } = await import('aws-amplify/auth');
-    return { fetchAuthSession, getCurrentUser, signIn, signOut };
+    const { fetchAuthSession, getCurrentUser, signIn, signOut, signInWithRedirect } = await import('aws-amplify/auth');
+    return { fetchAuthSession, getCurrentUser, signIn, signOut, signInWithRedirect };
   } catch {
     return null;
   }
@@ -53,10 +53,17 @@ export const authService = {
     return amplify.signIn({ username: email, password });
   },
 
+  async signInWithSocial(provider: 'Google' | 'Facebook') {
+    const amplify = await getAmplifyAuth();
+    if (!amplify) throw new Error('AWS no está configurado. Usa el modo demo.');
+    return amplify.signInWithRedirect({
+      provider: provider as any
+    });
+  },
+
   async signOut() {
     const amplify = await getAmplifyAuth();
     if (!amplify) return;
     await amplify.signOut();
   },
 };
-

@@ -107,10 +107,20 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
             <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>
               {isGuest ? 'Modo invitado (sin registro)' : user.displayName}
             </h2>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span>Rol: <strong>{user.role}</strong></span>
               <span>•</span>
               <span>{isGuest ? 'Acceso temporal' : 'Cuenta activa'}</span>
+              {user.provider && (
+                <>
+                  <span>•</span>
+                  <span>
+                    {user.provider === 'google' && '🔵 Conectado con Google'}
+                    {user.provider === 'facebook' && '🔷 Conectado con Facebook'}
+                    {user.provider === 'local' && '✉️ Correo y contraseña'}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>

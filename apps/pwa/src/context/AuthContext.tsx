@@ -7,6 +7,7 @@ export interface UserSession {
   displayName: string;       // nombre mostrado
   role: UserRole;
   mode: SessionMode;         // 'registered' | 'guest' | 'anonymous'
+  provider?: 'local' | 'google' | 'facebook';
 }
 
 interface AuthContextType {

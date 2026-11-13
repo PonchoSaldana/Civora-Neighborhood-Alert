@@ -2,6 +2,8 @@
 // Los valores reales se inyectan por variables de entorno VITE_* en .env.local
 // Ver .env.example para las variables necesarias
 
+const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/` : 'http://localhost:5173/';
+
 export const amplifyConfig = {
   Auth: {
     Cognito: {
@@ -9,6 +11,14 @@ export const amplifyConfig = {
       userPoolClientId: import.meta.env.VITE_COGNITO_CLIENT_ID || '',
       loginWith: {
         email: true,
+        oauth: {
+          domain: import.meta.env.VITE_COGNITO_DOMAIN || '',
+          scopes: ['email', 'openid', 'profile'],
+          redirectSignIn: [redirectUrl],
+          redirectSignOut: [redirectUrl],
+          responseType: 'code' as const,
+          providers: ['Google', 'Facebook']
+        }
       },
     },
   },
@@ -27,4 +37,3 @@ export const isAwsConfigured =
   !!import.meta.env.VITE_COGNITO_USER_POOL_ID &&
   !!import.meta.env.VITE_COGNITO_CLIENT_ID &&
   !!import.meta.env.VITE_API_URL;
-

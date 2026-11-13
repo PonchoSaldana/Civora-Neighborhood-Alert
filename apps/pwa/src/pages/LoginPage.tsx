@@ -131,9 +131,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           overflow: 'hidden'
         }}
       >
-        {/* ── Cabecera con logo oficial ── */}
+        {/* ── Cabecera con logo oficial más grande ── */}
         <div style={{
-          padding: '28px 28px 18px 28px',
+          padding: '32px 28px 20px 28px',
           borderBottom: '1px solid var(--hairline)',
           textAlign: 'center'
         }}>
@@ -141,16 +141,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             src="/logo.png"
             alt="Civora Logo"
             style={{
-              width: '64px',
-              height: '64px',
+              width: '110px',
+              height: '110px',
               objectFit: 'contain',
               display: 'block',
-              margin: '0 auto 10px auto'
+              margin: '0 auto 14px auto',
+              filter: 'drop-shadow(0 4px 12px rgba(66, 133, 244, 0.25))'
             }}
           />
-          <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 600 }}>Civora</h1>
+          <h1 style={{ fontSize: 'var(--text-2xl, 24px)', fontWeight: 700, letterSpacing: '-0.5px' }}>
+            Civora
+          </h1>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Alerta vecinal — reporte y seguimiento comunitario
+            Alerta y seguridad colaborativa vecinal
           </p>
         </div>
 
@@ -185,71 +188,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </div>
             <ArrowRight size={16} color="var(--accent)" />
           </button>
-
-          {/* ── Botones de Inicio de Sesión Social: Google y Facebook ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-            {/* Google */}
-            <button
-              type="button"
-              onClick={() => handleSocialLogin('Google')}
-              disabled={loading}
-              className="btn-secondary"
-              style={{
-                width: '100%',
-                height: '44px',
-                background: 'var(--surface)',
-                border: '1px solid var(--hairline)',
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-                fontSize: 'var(--text-sm)',
-                fontWeight: 500,
-                color: 'var(--text)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
-              }}
-            >
-              <GoogleIcon />
-              <span>Continuar con Google</span>
-            </button>
-
-            {/* Facebook */}
-            <button
-              type="button"
-              onClick={() => handleSocialLogin('Facebook')}
-              disabled={loading}
-              className="btn-secondary"
-              style={{
-                width: '100%',
-                height: '44px',
-                background: 'var(--surface)',
-                border: '1px solid var(--hairline)',
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-                fontSize: 'var(--text-sm)',
-                fontWeight: 500,
-                color: 'var(--text)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
-              }}
-            >
-              <FacebookIcon />
-              <span>Continuar con Facebook</span>
-            </button>
-          </div>
-
-          {/* ── Divisor ── */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '10px',
-            marginBottom: '16px', fontSize: 'var(--text-xs)', color: 'var(--text-muted)'
-          }}>
-            <div style={{ flex: 1, height: '1px', background: 'var(--hairline)' }} />
-            o con correo electrónico
-            <div style={{ flex: 1, height: '1px', background: 'var(--hairline)' }} />
-          </div>
 
           {/* ── Tabs Login / Registro ── */}
           <div style={{
@@ -327,8 +265,73 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </button>
           </form>
 
+          {/* ── Divisor Social (abajo) ── */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            margin: '20px 0 16px 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)'
+          }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--hairline)' }} />
+            o continuar con
+            <div style={{ flex: 1, height: '1px', background: 'var(--hairline)' }} />
+          </div>
+
+          {/* ── Botones de Inicio de Sesión Social (Google y Facebook) hasta abajo ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '8px' }}>
+            {/* Google */}
+            <button
+              type="button"
+              onClick={() => handleSocialLogin('Google')}
+              disabled={loading}
+              className="btn-secondary"
+              style={{
+                width: '100%',
+                height: '44px',
+                background: 'var(--surface)',
+                border: '1px solid var(--hairline)',
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 500,
+                color: 'var(--text)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+              }}
+            >
+              <GoogleIcon />
+              <span>Continuar con Google</span>
+            </button>
+
+            {/* Facebook */}
+            <button
+              type="button"
+              onClick={() => handleSocialLogin('Facebook')}
+              disabled={loading}
+              className="btn-secondary"
+              style={{
+                width: '100%',
+                height: '44px',
+                background: 'var(--surface)',
+                border: '1px solid var(--hairline)',
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 500,
+                color: 'var(--text)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+              }}
+            >
+              <FacebookIcon />
+              <span>Continuar con Facebook</span>
+            </button>
+          </div>
+
           {/* Nota de demostración */}
-          <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '14px' }}>
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '16px' }}>
             Demo: usa un correo con la palabra "admin" para probar funciones de administrador.
           </p>
         </div>

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Civora — Alerta Vecinal</title>
+    <meta name="description" content="Reporte y seguimiento comunitario de incidentes con detección explicable de duplicados" />
+    <meta name="theme-color" content="#3F5F8F" id="meta-theme-color" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <!-- Prevenir parpadeo de tema en el primer render (Sección 10.4) -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('civora_theme');
+          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = saved || 'system';
+          var effectiveTheme = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme;
+          document.documentElement.setAttribute('data-theme', effectiveTheme);
+          var metaTheme = document.getElementById('meta-theme-color');
+          if (metaTheme) {
+            metaTheme.setAttribute('content', effectiveTheme === 'dark' ? '#0D1015' : '#EDEFF3');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

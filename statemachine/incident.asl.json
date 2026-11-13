@@ -1,0 +1,37 @@
+{
+  "Comment": "Civora Incident Processing State Machine - Valida evidencia y detecta candidatos duplicados",
+  "StartAt": "ProcessIncidentStep",
+  "States": {
+    "ProcessIncidentStep": {
+      "Type": "Task",
+      "Resource": "${ProcessIncidentFunctionArn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleProcessingError"
+        }
+      ],
+      "End": true
+    },
+    "HandleProcessingError": {
+      "Type": "Fail",
+      "Cause": "Error al procesar el incidente en Step Functions",
+      "Error": "IncidentProcessingError"
+    }
+  }
+}
+

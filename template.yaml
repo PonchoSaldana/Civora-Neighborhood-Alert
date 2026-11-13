@@ -1,0 +1,428 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Civora - PWA serverless en AWS para reporte y seguimiento de incidentes comunitarios con detección explicable de duplicados
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 256
+    Runtime: nodejs22.x
+    Architectures:
+      - arm64
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref IncidentsTable
+        EVIDENCE_BUCKET_NAME: !Ref EvidenceBucket
+        STATE_MACHINE_ARN: !Ref IncidentProcessingStateMachine
+        ALLOWED_ORIGIN: !Sub 'https://${HostingDistribution.DomainName}'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Resources:
+  # ==========================================
+  # 1. DynamoDB: Tabla única CivoraIncidents
+  # ==========================================
+  IncidentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'CivoraIncidents-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+        - AttributeName: GSI2PK
+          AttributeType: S
+        - AttributeName: GSI2SK
+          AttributeType: S
+        - AttributeName: GSI3PK
+          AttributeType: S
+        - AttributeName: GSI3SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI2
+          KeySchema:
+            - AttributeName: GSI2PK
+              KeyType: HASH
+            - AttributeName: GSI2SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI3
+          KeySchema:
+            - AttributeName: GSI3PK
+              KeyType: HASH
+            - AttributeName: GSI3SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # ==========================================
+  # 2. S3: Bucket Privado de Evidencias
+  # ==========================================
+  EvidenceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'civora-evidence-${AWS::AccountId}-${AWS::Region}-${Environment}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, POST, PUT]
+            AllowedOrigins: ['*']
+            MaxAge: 3000
+
+  # ==========================================
+  # 3. Cognito: User Pool, Client y Grupos
+  # ==========================================
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub 'civora-users-${Environment}'
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub 'civora-pwa-client-${Environment}'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+      CallbackURLs:
+        - 'http://localhost:5173/'
+        - !Sub 'https://${HostingDistribution.DomainName}/'
+      LogoutURLs:
+        - 'http://localhost:5173/'
+        - !Sub 'https://${HostingDistribution.DomainName}/'
+
+  ReporterGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: REPORTER
+      UserPoolId: !Ref UserPool
+      Description: Ciudadanos y vecinos reportantes
+
+  ManagerGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: MANAGER
+      UserPoolId: !Ref UserPool
+      Description: Gestores comunitarios y personal de atención
+
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: ADMIN
+      UserPoolId: !Ref UserPool
+      Description: Administradores de la plataforma
+
+  # ==========================================
+  # 4. API Gateway: HTTP API con JWT Authorizer
+  # ==========================================
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Environment
+      CorsConfiguration:
+        AllowOrigins:
+          - 'http://localhost:5173'
+          - !Sub 'https://${HostingDistribution.DomainName}'
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - Idempotency-Key
+          - X-Amz-Date
+        AllowMethods:
+          - GET
+          - POST
+          - PATCH
+          - OPTIONS
+        AllowCredentials: true
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
+              audience:
+                - !Ref UserPoolClient
+
+  # ==========================================
+  # 5. Funciones Lambda
+  # ==========================================
+  PresignUploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/src/functions/presignUpload.handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref EvidenceBucket
+      Events:
+        Presign:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /uploads/presign
+            Method: POST
+
+  CreateIncidentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/src/functions/createIncident.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IncidentsTable
+        - StepFunctionsExecutionPolicy:
+            StateMachineName: !GetAtt IncidentProcessingStateMachine.Name
+      Events:
+        Create:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /incidents
+            Method: POST
+
+  GetIncidentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/src/functions/getIncidents.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref IncidentsTable
+      Events:
+        ListIncidents:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /incidents
+            Method: GET
+        ListMyIncidents:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /me/incidents
+            Method: GET
+
+  GetIncidentByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/src/functions/getIncidentById.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref IncidentsTable
+        - S3ReadPolicy:
+            BucketName: !Ref EvidenceBucket
+      Events:
+        GetDetail:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /incidents/{id}
+            Method: GET
+
+  UpdateStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/src/functions/updateStatus.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IncidentsTable
+      Events:
+        UpdateStatus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /incidents/{id}/status
+            Method: PATCH
+
+  ConfirmIncidentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/src/functions/confirmIncident.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IncidentsTable
+      Events:
+        Confirm:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /incidents/{id}/confirm
+            Method: POST
+
+  LinkDuplicateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/src/functions/linkDuplicate.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IncidentsTable
+      Events:
+        LinkDup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /incidents/{id}/link-duplicate
+            Method: POST
+
+  ProcessIncidentStepFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/src/functions/processIncidentStep.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IncidentsTable
+        - S3ReadPolicy:
+            BucketName: !Ref EvidenceBucket
+
+  # ==========================================
+  # 6. Step Functions: Orquestación Standard
+  # ==========================================
+  IncidentProcessingStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine/incident.asl.json
+      DefinitionSubstitutions:
+        ProcessIncidentFunctionArn: !GetAtt ProcessIncidentStepFunction.Arn
+      Type: STANDARD
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ProcessIncidentStepFunction
+
+  # ==========================================
+  # 7. Frontend Hosting: S3 Privado + CloudFront
+  # ==========================================
+  HostingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'civora-frontend-${AWS::AccountId}-${AWS::Region}-${Environment}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub 'civora-oac-${Environment}'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  HostingDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt HostingBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  HostingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref HostingBucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:GetObject
+            Effect: Allow
+            Resource: !Sub '${HostingBucket.Arn}/*'
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${HostingDistribution}'
+
+Outputs:
+  HttpApiUrl:
+    Description: URL base de la HTTP API
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+  FrontendUrl:
+    Description: URL pública de la PWA en CloudFront
+    Value: !Sub 'https://${HostingDistribution.DomainName}'
+  UserPoolId:
+    Description: ID del User Pool de Cognito
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: ID del App Client de Cognito
+    Value: !Ref UserPoolClient
+  EvidenceBucketName:
+    Description: Bucket privado de evidencias fotográficas
+    Value: !Ref EvidenceBucket
+

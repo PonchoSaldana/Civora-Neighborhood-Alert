@@ -1,0 +1,33 @@
+{
+  "name": "civora",
+  "version": "1.0.0",
+  "description": "Civora - PWA serverless en AWS para reporte y seguimiento de incidentes comunitarios con detección explicable de duplicados",
+  "private": true,
+  "workspaces": [
+    "apps/pwa"
+  ],
+  "scripts": {
+    "dev": "npm --workspace=apps/pwa run dev",
+    "build": "npm run build:shared && npm --workspace=apps/pwa run build",
+    "build:shared": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc --noEmit && npm --workspace=apps/pwa run typecheck",
+    "lint": "npm --workspace=apps/pwa run lint",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.147",
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5",
+    "zod": "^3.24.1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.744.0",
+    "@aws-sdk/client-s3": "^3.744.0",
+    "@aws-sdk/client-sfn": "^3.744.0",
+    "@aws-sdk/lib-dynamodb": "^3.744.0",
+    "@aws-sdk/s3-presigned-post": "^3.1168.0",
+    "@aws-sdk/s3-request-presigner": "^3.744.0",
+    "zod": "^3.24.1"
+  }
+}

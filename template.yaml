@@ -13,14 +13,17 @@ Globals:
       Variables:
         TABLE_NAME: !Ref IncidentsTable
         EVIDENCE_BUCKET_NAME: !Ref EvidenceBucket
-        STATE_MACHINE_ARN: !Ref IncidentProcessingStateMachine
-        ALLOWED_ORIGIN: !Sub 'https://${HostingDistribution.DomainName}'
+        ALLOWED_ORIGIN: !Ref FrontendUrl
 
 Parameters:
   Environment:
     Type: String
     Default: dev
     AllowedValues: [dev, staging, prod]
+  FrontendUrl:
+    Type: String
+    Description: URL de la PWA en Amplify, sin barra final (ej. https://main.xxxx.amplifyapp.com)
+    AllowedPattern: '^https://[a-zA-Z0-9.-]+$'
 
 Resources:
   # ==========================================
@@ -100,8 +103,10 @@ Resources:
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders: ['*']
-            AllowedMethods: [GET, POST, PUT]
-            AllowedOrigins: ['*']
+            AllowedMethods: [GET, POST]
+            AllowedOrigins:
+              - 'http://localhost:5173'
+              - !Ref FrontendUrl
             MaxAge: 3000
 
   # ==========================================
@@ -140,12 +145,20 @@ Resources:
         - openid
         - profile
       AllowedOAuthFlowsUserPoolClient: true
+      SupportedIdentityProviders:
+        - COGNITO
       CallbackURLs:
         - 'http://localhost:5173/'
-        - !Sub 'https://${HostingDistribution.DomainName}/'
+        - !Sub '${FrontendUrl}/'
       LogoutURLs:
         - 'http://localhost:5173/'
-        - !Sub 'https://${HostingDistribution.DomainName}/'
+        - !Sub '${FrontendUrl}/'
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub 'civora-${Environment}-${AWS::AccountId}'
+      UserPoolId: !Ref UserPool
 
   ReporterGroup:
     Type: AWS::Cognito::UserPoolGroup
@@ -178,7 +191,7 @@ Resources:
       CorsConfiguration:
         AllowOrigins:
           - 'http://localhost:5173'
-          - !Sub 'https://${HostingDistribution.DomainName}'
+          - !Ref FrontendUrl
         AllowHeaders:
           - Content-Type
           - Authorization
@@ -208,7 +221,7 @@ Resources:
     Properties:
       Handler: dist/functions/presignUpload.handler
       Policies:
-        - S3CrudPolicy:
+        - S3WritePolicy:
             BucketName: !Ref EvidenceBucket
       Events:
         Presign:
@@ -222,11 +235,14 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: dist/functions/createIncident.handler
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:civora-${Environment}-incident-processing'
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref IncidentsTable
         - StepFunctionsExecutionPolicy:
-            StateMachineName: !GetAtt IncidentProcessingStateMachine.Name
+            StateMachineName: !Sub 'civora-${Environment}-incident-processing'
       Events:
         Create:
           Type: HttpApi
@@ -334,6 +350,7 @@ Resources:
   IncidentProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
+      Name: !Sub 'civora-${Environment}-incident-processing'
       DefinitionUri: statemachine/incident.asl.json
       DefinitionSubstitutions:
         ProcessIncidentFunctionArn: !GetAtt ProcessIncidentStepFunction.Arn
@@ -342,80 +359,13 @@ Resources:
         - LambdaInvokePolicy:
             FunctionName: !Ref ProcessIncidentStepFunction
 
-  # ==========================================
-  # 7. Frontend Hosting: S3 Privado + CloudFront
-  # ==========================================
-  HostingBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub 'civora-frontend-${AWS::AccountId}-${AWS::Region}-${Environment}'
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-
-  CloudFrontOAC:
-    Type: AWS::CloudFront::OriginAccessControl
-    Properties:
-      OriginAccessControlConfig:
-        Name: !Sub 'civora-oac-${Environment}'
-        OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
-
-  HostingDistribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Enabled: true
-        DefaultRootObject: index.html
-        Origins:
-          - Id: S3Origin
-            DomainName: !GetAtt HostingBucket.RegionalDomainName
-            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
-            S3OriginConfig:
-              OriginAccessIdentity: ''
-        DefaultCacheBehavior:
-          TargetOriginId: S3Origin
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods: [GET, HEAD, OPTIONS]
-          CachedMethods: [GET, HEAD]
-          Compress: true
-          ForwardedValues:
-            QueryString: false
-            Cookies:
-              Forward: none
-        CustomErrorResponses:
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-
-  HostingBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref HostingBucket
-      PolicyDocument:
-        Statement:
-          - Action: s3:GetObject
-            Effect: Allow
-            Resource: !Sub '${HostingBucket.Arn}/*'
-            Principal:
-              Service: cloudfront.amazonaws.com
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${HostingDistribution}'
-
 Outputs:
   HttpApiUrl:
     Description: URL base de la HTTP API
     Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
-  FrontendUrl:
-    Description: URL pública de la PWA en CloudFront
-    Value: !Sub 'https://${HostingDistribution.DomainName}'
+  CognitoDomain:
+    Description: Dominio del Hosted UI de Cognito
+    Value: !Sub '${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
   UserPoolId:
     Description: ID del User Pool de Cognito
     Value: !Ref UserPool
@@ -425,4 +375,3 @@ Outputs:
   EvidenceBucketName:
     Description: Bucket privado de evidencias fotográficas
     Value: !Ref EvidenceBucket
-

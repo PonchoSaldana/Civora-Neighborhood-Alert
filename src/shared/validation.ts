@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const AllowedImageMimeTypes = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const AllowedImageMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'] as const;
 export const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export const PresignUploadSchema = z.object({

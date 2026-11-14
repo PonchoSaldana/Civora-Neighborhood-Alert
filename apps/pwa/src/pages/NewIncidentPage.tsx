@@ -70,7 +70,7 @@ export const NewIncidentPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
       setErrorMsg('Solo se admiten formatos JPEG, PNG o WebP.');
       return;
     }
@@ -365,7 +365,7 @@ export const NewIncidentPage: React.FC = () => {
             <input
               id="photoInput"
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/jpg"
               onChange={handlePhotoChange}
               style={{ display: 'none' }}
             />

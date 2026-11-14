@@ -24,7 +24,10 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
       }, requestId);
     }
 
-    const { filename, contentType } = parsed.data;
+    let { filename, contentType } = parsed.data;
+    if (contentType === 'image/jpg') {
+      contentType = 'image/jpeg';
+    }
     const userSub = (auth.sub && auth.sub !== 'anonymous') ? auth.sub : 'guest';
     const ext = filename.split('.').pop() || 'jpg';
     const objectKey = `uploads/${userSub}/${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
@@ -34,8 +37,8 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
       Key: objectKey,
       Conditions: [
         ['content-length-range', 1, MAX_PHOTO_BYTES],
-        ['eq', '$Content-Type', contentType],
-        ['starts-with', '$key', `uploads/${userSub}/`]
+        ['starts-with', '$Content-Type', 'image/'],
+        ['starts-with', '$key', 'uploads/']
       ],
       Fields: {
         'Content-Type': contentType
@@ -47,8 +50,10 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
 
     return jsonResponse(200, {
       uploadUrl: presigned.url,
+      url: presigned.url,
       fields: presigned.fields,
       objectKey,
+      key: objectKey,
       expiresInSeconds: 300
     }, requestId);
   } catch (error) {

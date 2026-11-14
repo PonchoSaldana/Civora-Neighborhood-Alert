@@ -92,12 +92,15 @@ export const remoteApi = {
     }),
 
   presignUpload: (filename: string, contentType: string) =>
-    apiFetch<{ url: string; fields: Record<string, string>; key: string }>(
-      '/uploads/presign',
-      {
-        method: 'POST',
-        body: JSON.stringify({ filename, contentType }),
-      }
-    ),
+    apiFetch<{
+      url: string;
+      uploadUrl?: string;
+      fields: Record<string, string>;
+      key: string;
+      objectKey?: string;
+    }>('/uploads/presign', {
+      method: 'POST',
+      body: JSON.stringify({ filename, contentType }),
+    }),
 };
 

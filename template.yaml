@@ -104,10 +104,9 @@ Resources:
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders: ['*']
-            AllowedMethods: [GET, POST]
+            AllowedMethods: [GET, POST, PUT, HEAD]
             AllowedOrigins:
-              - 'http://localhost:5173'
-              - !Ref FrontendUrl
+              - '*'
             MaxAge: 3000
 
   # ==========================================
@@ -258,6 +257,8 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref IncidentsTable
+        - S3ReadPolicy:
+            BucketName: !Ref EvidenceBucket
       Events:
         ListIncidents:
           Type: HttpApi

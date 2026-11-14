@@ -171,15 +171,30 @@ class IncidentApiService {
 
         // Subir foto a S3 via presigned URL si existe
         if (payload.photoBlob && payload.photoName) {
-          const { url, fields, key } = await remoteApi.presignUpload(
-            payload.photoName,
-            payload.photoBlob.type || 'image/jpeg'
-          );
-          const form = new FormData();
-          Object.entries(fields).forEach(([k, v]) => form.append(k, v));
-          form.append('file', payload.photoBlob, payload.photoName);
-          const uploadRes = await fetch(url, { method: 'POST', body: form });
-          if (uploadRes.ok) photoKeys = [key];
+          try {
+            const presignRes = await remoteApi.presignUpload(
+              payload.photoName,
+              payload.photoBlob.type || 'image/jpeg'
+            );
+            const uploadUrl = presignRes.url || presignRes.uploadUrl;
+            const objectKey = presignRes.key || presignRes.objectKey;
+            const fields = presignRes.fields || {};
+
+            if (uploadUrl) {
+              const form = new FormData();
+              Object.entries(fields).forEach(([k, v]) => form.append(k, v));
+              // In S3 presigned POST, 'file' must be the last field
+              form.append('file', payload.photoBlob, payload.photoName);
+              const uploadRes = await fetch(uploadUrl, { method: 'POST', body: form });
+              if (uploadRes.ok && objectKey) {
+                photoKeys = [objectKey];
+              } else {
+                console.warn('[Civora] S3 upload falló con status:', uploadRes.status);
+              }
+            }
+          } catch (uploadErr) {
+            console.warn('[Civora] Error subiendo foto a S3, continuando creación de reporte:', uploadErr);
+          }
         }
 
         const res = await remoteApi.createIncident({

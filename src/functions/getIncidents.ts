@@ -1,8 +1,13 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { extractAuth, jsonResponse } from '../shared/auth.js';
 import { docClient, TABLE_NAME } from './dynamoHelpers.js';
 import { logger } from '../shared/logger.js';
+
+const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
+const BUCKET_NAME = process.env.EVIDENCE_BUCKET_NAME || '';
 
 export async function handler(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
   const requestId = event.requestContext.requestId;
@@ -80,7 +85,33 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
     }
 
     const response = await docClient.send(command);
-    const items = response.Items || [];
+    const rawItems = response.Items || [];
+
+    // Generar URLs firmadas para fotos de cada incidente (1 hora de vigencia)
+    const items = await Promise.all(
+      rawItems.map(async (item) => {
+        if (!item.photoKeys || !Array.isArray(item.photoKeys) || item.photoKeys.length === 0 || !BUCKET_NAME) {
+          return { ...item, photoUrls: item.photoUrls || [] };
+        }
+        const photoUrls: string[] = [];
+        for (const key of item.photoKeys) {
+          try {
+            const url = await getSignedUrl(
+              s3,
+              new GetObjectCommand({
+                Bucket: BUCKET_NAME,
+                Key: key
+              }),
+              { expiresIn: 3600 }
+            );
+            photoUrls.push(url);
+          } catch (err) {
+            logger.warn('Could not generate presigned GET for key', { key, err });
+          }
+        }
+        return { ...item, photoUrls };
+      })
+    );
 
     let nextToken: string | undefined;
     if (response.LastEvaluatedKey) {

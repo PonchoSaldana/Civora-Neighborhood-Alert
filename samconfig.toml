@@ -14,6 +14,6 @@ resolve_s3     = true
 stack_name     = "civora-dev"
 s3_prefix      = "civora-dev"
 region         = "us-east-2"
-parameter_overrides = "Environment=\"dev\""
+parameter_overrides = "Environment=\"dev\" FrontendUrl=\"https://main.d1y2monme9k9xr.amplifyapp.com\""
 image_repositories  = []
 

@@ -193,6 +193,7 @@ Resources:
         AllowOrigins:
           - 'http://localhost:5173'
           - 'http://localhost:4173'
+          - 'https://main.d1y2monme9k9xr.amplifyapp.com'
           - !Ref FrontendUrl
         AllowHeaders:
           - Content-Type

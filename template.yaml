@@ -9,6 +9,7 @@ Globals:
     Runtime: nodejs22.x
     Architectures:
       - arm64
+    CodeUri: dist/
     Environment:
       Variables:
         TABLE_NAME: !Ref IncidentsTable
@@ -219,7 +220,7 @@ Resources:
   PresignUploadFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: dist/functions/presignUpload.handler
+      Handler: functions/presignUpload.handler
       Policies:
         - S3WritePolicy:
             BucketName: !Ref EvidenceBucket
@@ -234,7 +235,7 @@ Resources:
   CreateIncidentFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: dist/functions/createIncident.handler
+      Handler: functions/createIncident.handler
       Environment:
         Variables:
           STATE_MACHINE_ARN: !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:civora-${Environment}-incident-processing'
@@ -254,7 +255,7 @@ Resources:
   GetIncidentsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: dist/functions/getIncidents.handler
+      Handler: functions/getIncidents.handler
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref IncidentsTable
@@ -275,7 +276,7 @@ Resources:
   GetIncidentByIdFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: dist/functions/getIncidentById.handler
+      Handler: functions/getIncidentById.handler
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref IncidentsTable
@@ -292,7 +293,7 @@ Resources:
   UpdateStatusFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: dist/functions/updateStatus.handler
+      Handler: functions/updateStatus.handler
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref IncidentsTable
@@ -307,7 +308,7 @@ Resources:
   ConfirmIncidentFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: dist/functions/confirmIncident.handler
+      Handler: functions/confirmIncident.handler
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref IncidentsTable
@@ -322,7 +323,7 @@ Resources:
   LinkDuplicateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: dist/functions/linkDuplicate.handler
+      Handler: functions/linkDuplicate.handler
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref IncidentsTable
@@ -337,7 +338,7 @@ Resources:
   ProcessIncidentStepFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: dist/functions/processIncidentStep.handler
+      Handler: functions/processIncidentStep.handler
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref IncidentsTable

@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npm --workspace=apps/pwa run dev",
     "build": "npm run build:backend && npm --workspace=apps/pwa run build",
-    "build:backend": "tsc -p tsconfig.backend.json",
+    "build:backend": "tsc -p tsconfig.backend.json && node scripts/prepare-backend.mjs",
     "build:shared": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc --noEmit && npm --workspace=apps/pwa run typecheck",
     "lint": "npm --workspace=apps/pwa run lint",

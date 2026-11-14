@@ -9,7 +9,6 @@ Globals:
     Runtime: nodejs22.x
     Architectures:
       - arm64
-    CodeUri: dist/
     Environment:
       Variables:
         TABLE_NAME: !Ref IncidentsTable
@@ -104,9 +103,11 @@ Resources:
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders: ['*']
-            AllowedMethods: [GET, POST, PUT, HEAD]
+            AllowedMethods: [GET, POST, HEAD]
             AllowedOrigins:
-              - '*'
+              - 'http://localhost:5173'
+              - 'http://localhost:4173'
+              - !Ref FrontendUrl
             MaxAge: 3000
 
   # ==========================================
@@ -192,16 +193,18 @@ Resources:
         AllowOrigins:
           - 'http://localhost:5173'
           - 'http://localhost:4173'
-          - 'http://localhost:3000'
           - !Ref FrontendUrl
         AllowHeaders:
-          - '*'
+          - Content-Type
+          - Authorization
+          - Idempotency-Key
+          - X-Amz-Date
         AllowMethods:
           - GET
           - POST
           - PATCH
           - OPTIONS
-        AllowCredentials: true
+        MaxAge: 600
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
         Authorizers:
@@ -218,7 +221,8 @@ Resources:
   PresignUploadFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: functions/presignUpload.handler
+      CodeUri: build/presignUpload/
+      Handler: index.handler
       Policies:
         - S3WritePolicy:
             BucketName: !Ref EvidenceBucket
@@ -229,13 +233,12 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /uploads/presign
             Method: POST
-            Auth:
-              Authorizer: NONE
 
   CreateIncidentFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: functions/createIncident.handler
+      CodeUri: build/createIncident/
+      Handler: index.handler
       Environment:
         Variables:
           STATE_MACHINE_ARN: !Sub 'arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:civora-${Environment}-incident-processing'
@@ -251,13 +254,12 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /incidents
             Method: POST
-            Auth:
-              Authorizer: NONE
 
   GetIncidentsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: functions/getIncidents.handler
+      CodeUri: build/getIncidents/
+      Handler: index.handler
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref IncidentsTable
@@ -270,8 +272,6 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /incidents
             Method: GET
-            Auth:
-              Authorizer: NONE
         ListMyIncidents:
           Type: HttpApi
           Properties:
@@ -282,7 +282,8 @@ Resources:
   GetIncidentByIdFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: functions/getIncidentById.handler
+      CodeUri: build/getIncidentById/
+      Handler: index.handler
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref IncidentsTable
@@ -295,13 +296,12 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /incidents/{id}
             Method: GET
-            Auth:
-              Authorizer: NONE
 
   UpdateStatusFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: functions/updateStatus.handler
+      CodeUri: build/updateStatus/
+      Handler: index.handler
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref IncidentsTable
@@ -316,7 +316,8 @@ Resources:
   ConfirmIncidentFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: functions/confirmIncident.handler
+      CodeUri: build/confirmIncident/
+      Handler: index.handler
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref IncidentsTable
@@ -327,13 +328,12 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /incidents/{id}/confirm
             Method: POST
-            Auth:
-              Authorizer: NONE
 
   LinkDuplicateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: functions/linkDuplicate.handler
+      CodeUri: build/linkDuplicate/
+      Handler: index.handler
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref IncidentsTable
@@ -348,7 +348,8 @@ Resources:
   ProcessIncidentStepFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: functions/processIncidentStep.handler
+      CodeUri: build/processIncidentStep/
+      Handler: index.handler
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref IncidentsTable

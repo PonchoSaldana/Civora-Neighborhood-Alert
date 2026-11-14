@@ -47,13 +47,21 @@ export function extractAuth(event: APIGatewayProxyEventV2): AuthContext {
 }
 
 export function jsonResponse(statusCode: number, data: unknown, requestId?: string) {
+  const allowedOrigin = process.env.ALLOWED_ORIGIN || '*';
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Amz-Date, X-Api-Key, X-Amz-Security-Token, Idempotency-Key'
+  };
+
+  if (allowedOrigin !== '*') {
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  }
+
   return {
     statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || '*',
-      'Access-Control-Allow-Credentials': 'true'
-    },
+    headers,
     body: JSON.stringify(
       statusCode >= 400
         ? {

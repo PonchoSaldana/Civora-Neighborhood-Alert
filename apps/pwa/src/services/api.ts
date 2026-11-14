@@ -5,7 +5,13 @@ import { remoteApi } from './apiClient.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 /** true cuando se proporcionaron credenciales AWS reales */
-const USE_AWS = !!API_BASE_URL;
+export const USE_AWS = !!API_BASE_URL;
+
+if (!USE_AWS) {
+  console.info('[Civora] VITE_API_URL no está definida. La app opera en MODO DEMO LOCAL (datos en localStorage). Para conectar a AWS DynamoDB y S3, define VITE_API_URL en el archivo .env');
+} else {
+  console.info('[Civora] Modo AWS activo conectado a:', API_BASE_URL);
+}
 
 // ─── Datos sintéticos de demostración ────────────────────────────────────────
 const SYNTHETIC: Incident[] = [

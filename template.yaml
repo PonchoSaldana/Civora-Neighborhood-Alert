@@ -190,8 +190,10 @@ Resources:
       StageName: !Ref Environment
       CorsConfiguration:
         AllowOrigins:
-          - '*'
-        AllowCredentials: false
+          - 'http://localhost:5173'
+          - 'http://localhost:4173'
+          - 'http://localhost:3000'
+          - !Ref FrontendUrl
         AllowHeaders:
           - '*'
         AllowMethods:
@@ -199,6 +201,7 @@ Resources:
           - POST
           - PATCH
           - OPTIONS
+        AllowCredentials: true
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
         Authorizers:

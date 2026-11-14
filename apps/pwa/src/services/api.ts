@@ -180,7 +180,8 @@ class IncidentApiService {
           try {
             const presignRes = await remoteApi.presignUpload(
               payload.photoName,
-              payload.photoBlob.type || 'image/jpeg'
+              payload.photoBlob.type || 'image/jpeg',
+              payload.photoBlob.size
             );
             const uploadUrl = presignRes.url || presignRes.uploadUrl;
             const objectKey = presignRes.key || presignRes.objectKey;
@@ -195,11 +196,12 @@ class IncidentApiService {
               if (uploadRes.ok && objectKey) {
                 photoKeys = [objectKey];
               } else {
-                console.warn('[Civora] S3 upload falló con status:', uploadRes.status);
+                throw new Error(`No se pudo subir la foto (HTTP ${uploadRes.status}).`);
               }
             }
           } catch (uploadErr) {
-            console.warn('[Civora] Error subiendo foto a S3, continuando creación de reporte:', uploadErr);
+            console.error('[Civora] Error subiendo foto a S3:', uploadErr);
+            throw uploadErr;
           }
         }
 
@@ -224,7 +226,8 @@ class IncidentApiService {
 
         return res;
       } catch (err) {
-        console.warn('[Civora] createIncident AWS falló, usando demo local:', err);
+        console.error('[Civora] createIncident AWS falló:', err);
+        throw err;
       }
     }
 
@@ -280,7 +283,8 @@ class IncidentApiService {
         await remoteApi.confirmIncident(incidentId);
         return;
       } catch (err) {
-        console.warn('[Civora] confirmIncident AWS falló, usando demo local:', err);
+        console.error('[Civora] confirmIncident AWS falló:', err);
+        throw err;
       }
     }
     // ── Modo demo local ────────────────────────────────────────────────────
@@ -330,7 +334,8 @@ class IncidentApiService {
         await remoteApi.updateStatus(incidentId, targetStatus, note);
         return;
       } catch (err) {
-        console.warn('[Civora] updateStatus AWS falló, usando demo local:', err);
+        console.error('[Civora] updateStatus AWS falló:', err);
+        throw err;
       }
     }
     // ── Modo demo local ────────────────────────────────────────────────────
@@ -350,7 +355,8 @@ class IncidentApiService {
         await remoteApi.linkDuplicate(childId, parentId);
         return;
       } catch (err) {
-        console.warn('[Civora] linkDuplicate AWS falló, usando demo local:', err);
+        console.error('[Civora] linkDuplicate AWS falló:', err);
+        throw err;
       }
     }
     // ── Modo demo local ────────────────────────────────────────────────────

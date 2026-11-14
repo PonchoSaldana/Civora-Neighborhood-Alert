@@ -46,9 +46,16 @@ export async function apiFetch<T = unknown>(
 
   if (!response.ok) {
     let errorMsg = `HTTP ${response.status}`;
+    if (response.status === 401) {
+      errorMsg = jwt
+        ? 'Tu sesión expiró o no es válida. Vuelve a iniciar sesión.'
+        : 'Necesitas iniciar sesión con tu cuenta para hacer esto.';
+    }
     try {
       const body = await response.json();
-      errorMsg = body?.error?.message || body?.message || errorMsg;
+      if (response.status !== 401) {
+        errorMsg = body?.error?.message || body?.message || errorMsg;
+      }
     } catch {}
     throw new Error(errorMsg);
   }
@@ -91,7 +98,7 @@ export const remoteApi = {
       body: JSON.stringify({ parentId }),
     }),
 
-  presignUpload: (filename: string, contentType: string) =>
+  presignUpload: (filename: string, contentType: string, sizeBytes?: number) =>
     apiFetch<{
       url: string;
       uploadUrl?: string;
@@ -100,7 +107,6 @@ export const remoteApi = {
       objectKey?: string;
     }>('/uploads/presign', {
       method: 'POST',
-      body: JSON.stringify({ filename, contentType }),
+      body: JSON.stringify({ filename, contentType, sizeBytes }),
     }),
 };
-

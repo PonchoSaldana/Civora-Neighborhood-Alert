@@ -13,10 +13,6 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
   const requestId = event.requestContext.requestId;
   const auth = extractAuth(event);
 
-  if (!auth.sub || auth.sub === 'anonymous') {
-    return jsonResponse(401, 'No autorizado para subir evidencias.', requestId);
-  }
-
   try {
     const body = event.body ? JSON.parse(event.body) : {};
     const parsed = PresignUploadSchema.safeParse(body);
@@ -28,9 +24,10 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
       }, requestId);
     }
 
-    const { filename, contentType, sizeBytes } = parsed.data;
+    const { filename, contentType } = parsed.data;
+    const userSub = (auth.sub && auth.sub !== 'anonymous') ? auth.sub : 'guest';
     const ext = filename.split('.').pop() || 'jpg';
-    const objectKey = `uploads/${auth.sub}/${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
+    const objectKey = `uploads/${userSub}/${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
 
     const presigned = await createPresignedPost(s3, {
       Bucket: BUCKET_NAME,
@@ -38,7 +35,7 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
       Conditions: [
         ['content-length-range', 1, MAX_PHOTO_BYTES],
         ['eq', '$Content-Type', contentType],
-        ['starts-with', '$key', `uploads/${auth.sub}/`]
+        ['starts-with', '$key', `uploads/${userSub}/`]
       ],
       Fields: {
         'Content-Type': contentType
@@ -46,7 +43,7 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
       Expires: 300 // 5 minutos
     });
 
-    logger.info('Presigned upload generated', { requestId, userSub: auth.sub, objectKey });
+    logger.info('Presigned upload generated', { requestId, userSub, objectKey });
 
     return jsonResponse(200, {
       uploadUrl: presigned.url,

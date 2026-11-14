@@ -10,7 +10,7 @@ export const PresignUploadSchema = z.object({
   }),
   sizeBytes: z.number().int().positive().max(MAX_PHOTO_BYTES, {
     message: 'El archivo no puede exceder los 5 MB.'
-  })
+  }).optional()
 });
 
 export const CreateIncidentSchema = z.object({
@@ -24,7 +24,9 @@ export const CreateIncidentSchema = z.object({
     approximate: z.boolean().optional()
   }).optional(),
   photoKeys: z.array(z.string()).max(3).default([]),
-  idempotencyKey: z.string().min(8).max(128).optional()
+  idempotencyKey: z.string().min(8).max(128).optional(),
+  authorId: z.string().nullable().optional(),
+  authorName: z.string().optional()
 });
 
 export const UpdateStatusSchema = z.object({

@@ -1,5 +1,5 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
-import { QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { extractAuth, jsonResponse } from '../shared/auth.js';
 import { docClient, TABLE_NAME } from './dynamoHelpers.js';
 import { logger } from '../shared/logger.js';
@@ -54,20 +54,29 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
         Limit: limit,
         ExclusiveStartKey: exclusiveStartKey
       });
-    } else {
-      // Default: Status index (e.g. RECIBIDO, EN_REVISION, etc.)
-      const targetStatus = statusFilter || 'RECIBIDO';
+    } else if (statusFilter) {
       command = new QueryCommand({
         TableName: TABLE_NAME,
         IndexName: 'GSI1',
         KeyConditionExpression: 'GSI1PK = :st',
         ExpressionAttributeValues: {
-          ':st': `STATUS#${targetStatus}`
+          ':st': `STATUS#${statusFilter}`
         },
         ScanIndexForward: false,
         Limit: limit,
         ExclusiveStartKey: exclusiveStartKey
       });
+    } else {
+      // Sin filtro de estado: retornar todos los incidentes recientes
+      command = new ScanCommand({
+        TableName: TABLE_NAME,
+        FilterExpression: 'SK = :meta',
+        ExpressionAttributeValues: {
+          ':meta': 'META'
+        },
+        Limit: limit,
+        ExclusiveStartKey: exclusiveStartKey
+      }) as any;
     }
 
     const response = await docClient.send(command);

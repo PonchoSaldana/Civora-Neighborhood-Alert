@@ -15,10 +15,6 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
   const requestId = event.requestContext.requestId;
   const auth = extractAuth(event);
 
-  if (!auth.sub || auth.sub === 'anonymous') {
-    return jsonResponse(401, 'Debes iniciar sesión para reportar un incidente.', requestId);
-  }
-
   const idempotencyKey = event.headers['idempotency-key'] || event.headers['Idempotency-Key'];
 
   try {
@@ -36,6 +32,8 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
     }
 
     const data = parsed.data;
+    const userSub = (auth.sub && auth.sub !== 'anonymous') ? auth.sub : (data.authorId || `anon-${Date.now().toString().slice(-6)}`);
+    const userDisplayName = auth.email ? auth.email.split('@')[0] : (data.authorName || 'Vecino anónimo');
 
     // Idempotency check: if user supplied idempotencyKey, verify if already exists
     if (data.idempotencyKey) {
@@ -45,7 +43,7 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
         KeyConditionExpression: 'GSI2PK = :userPk',
         FilterExpression: 'idempotencyKey = :ikey',
         ExpressionAttributeValues: {
-          ':userPk': `USER#${auth.sub}`,
+          ':userPk': `USER#${userSub}`,
           ':ikey': data.idempotencyKey
         }
       }));
@@ -70,7 +68,7 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
       SK: 'META',
       GSI1PK: 'STATUS#RECIBIDO',
       GSI1SK: `${timestamp}#${incidentId}`,
-      GSI2PK: `USER#${auth.sub}`,
+      GSI2PK: `USER#${userSub}`,
       GSI2SK: `${timestamp}#${incidentId}`,
       GSI3PK: `AREA#${data.areaId}#CAT#${data.category}`,
       GSI3SK: `${timestamp}#${incidentId}`,
@@ -79,8 +77,8 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<APIGateway
       description: data.description,
       category: data.category,
       status: 'RECIBIDO',
-      createdBy: auth.sub,
-      creatorDisplayName: auth.email ? auth.email.split('@')[0] : 'Vecino',
+      createdBy: userSub,
+      creatorDisplayName: userDisplayName,
       createdAt: timestamp,
       updatedAt: timestamp,
       areaId: data.areaId,

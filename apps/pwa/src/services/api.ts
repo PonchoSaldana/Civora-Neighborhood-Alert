@@ -189,7 +189,17 @@ class IncidentApiService {
           areaId: payload.areaId,
           coordinates: payload.coordinates,
           photoKeys,
+          authorId: payload.authorId,
+          authorName: payload.authorName,
         }, payload.idempotencyKey);
+
+        try {
+          const myIds: string[] = JSON.parse(localStorage.getItem('civora_my_ids') || '[]');
+          if (res.incidentId && !myIds.includes(res.incidentId)) {
+            myIds.push(res.incidentId);
+            localStorage.setItem('civora_my_ids', JSON.stringify(myIds));
+          }
+        } catch {}
 
         return res;
       } catch (err) {

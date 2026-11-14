@@ -16,3 +16,4 @@ writeFileSync('dist/package.json', JSON.stringify(distPkg, null, 2));
 console.log('[Civora] Instalando dependencias de Lambda en dist/ (~3 MB)...');
 execSync('npm install --omit=dev --no-package-lock', { cwd: 'dist', stdio: 'inherit' });
 console.log('[Civora] Backend listo en dist/ para AWS SAM.');
+

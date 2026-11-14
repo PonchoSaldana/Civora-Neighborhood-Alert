@@ -1,8 +1,11 @@
 import { Incident, IncidentStatus, IncidentCategory, IncidentComment } from '@shared/types.js';
 import { findDuplicateCandidates } from '@shared/duplicates.js';
 import { validateStatusTransition } from '@shared/status.js';
+import { remoteApi } from './apiClient.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+/** true cuando se proporcionaron credenciales AWS reales */
+const USE_AWS = !!API_BASE_URL;
 
 // ─── Datos sintéticos de demostración ────────────────────────────────────────
 const SYNTHETIC: Incident[] = [
@@ -105,6 +108,24 @@ class IncidentApiService {
   // ── Incidentes ─────────────────────────────────────────────────────────────
 
   async getIncidents(params?: { status?: IncidentStatus; areaId?: string; mine?: boolean; userSub?: string | null }): Promise<Incident[]> {
+    // ── Modo AWS real ──────────────────────────────────────────────────────
+    if (USE_AWS) {
+      try {
+        if (params?.mine) {
+          const res = await remoteApi.getMyIncidents();
+          return (res.items as Incident[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        }
+        const qp: Record<string, string> = {};
+        if (params?.status) qp.status = params.status;
+        if (params?.areaId) qp.areaId = params.areaId;
+        const res = await remoteApi.getIncidents(qp);
+        return (res.items as Incident[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      } catch (err) {
+        console.warn('[Civora] getIncidents AWS falló, usando demo local:', err);
+      }
+    }
+
+    // ── Modo demo local ────────────────────────────────────────────────────
     let results = [...this.incidents];
     if (params?.mine) {
       let myIds: string[] = [];
@@ -120,9 +141,18 @@ class IncidentApiService {
   }
 
   async getIncidentById(id: string): Promise<Incident | null> {
+    // ── Modo AWS real ──────────────────────────────────────────────────────
+    if (USE_AWS) {
+      try {
+        const inc = await remoteApi.getIncidentById(id);
+        return inc as Incident;
+      } catch (err) {
+        console.warn('[Civora] getIncidentById AWS falló, usando demo local:', err);
+      }
+    }
+    // ── Modo demo local ────────────────────────────────────────────────────
     const inc = this.incidents.find(i => i.id === id) || null;
     if (!inc) return null;
-    // Attach comments
     return { ...inc, comments: this.comments[id] || [] };
   }
 
@@ -133,6 +163,41 @@ class IncidentApiService {
     authorId: string | null; authorName: string;
     idempotencyKey?: string;
   }): Promise<{ incidentId: string; isProcessing: boolean }> {
+
+    // ── Modo AWS real ──────────────────────────────────────────────────────
+    if (USE_AWS) {
+      try {
+        let photoKeys: string[] = [];
+
+        // Subir foto a S3 via presigned URL si existe
+        if (payload.photoBlob && payload.photoName) {
+          const { url, fields, key } = await remoteApi.presignUpload(
+            payload.photoName,
+            payload.photoBlob.type || 'image/jpeg'
+          );
+          const form = new FormData();
+          Object.entries(fields).forEach(([k, v]) => form.append(k, v));
+          form.append('file', payload.photoBlob, payload.photoName);
+          const uploadRes = await fetch(url, { method: 'POST', body: form });
+          if (uploadRes.ok) photoKeys = [key];
+        }
+
+        const res = await remoteApi.createIncident({
+          title: payload.title,
+          description: payload.description,
+          category: payload.category,
+          areaId: payload.areaId,
+          coordinates: payload.coordinates,
+          photoKeys,
+        }, payload.idempotencyKey);
+
+        return res;
+      } catch (err) {
+        console.warn('[Civora] createIncident AWS falló, usando demo local:', err);
+      }
+    }
+
+    // ── Modo demo local ────────────────────────────────────────────────────
     if (payload.idempotencyKey) {
       const dup = this.incidents.find(i => i.idempotencyKey === payload.idempotencyKey);
       if (dup) return { incidentId: dup.id, isProcessing: dup.isProcessing || false };
@@ -154,7 +219,6 @@ class IncidentApiService {
       duplicateCandidates: []
     };
 
-    // Duplicate detection
     newInc.duplicateCandidates = findDuplicateCandidates(
       { id, title: payload.title, description: payload.description, category: payload.category, createdAt: now, areaId: payload.areaId, coordinates: payload.coordinates },
       this.incidents
@@ -168,7 +232,6 @@ class IncidentApiService {
     } catch {}
     this.save();
 
-    // Simulate Step Functions completing
     setTimeout(() => {
       const t = this.incidents.find(i => i.id === id);
       if (t) { t.isProcessing = false; t.updatedAt = new Date().toISOString(); this.save(); }
@@ -180,6 +243,16 @@ class IncidentApiService {
   // ── Confirmaciones ─────────────────────────────────────────────────────────
 
   async confirmIncident(incidentId: string, userId: string): Promise<void> {
+    // ── Modo AWS real ──────────────────────────────────────────────────────
+    if (USE_AWS) {
+      try {
+        await remoteApi.confirmIncident(incidentId);
+        return;
+      } catch (err) {
+        console.warn('[Civora] confirmIncident AWS falló, usando demo local:', err);
+      }
+    }
+    // ── Modo demo local ────────────────────────────────────────────────────
     const key = `${incidentId}#${userId}`;
     if (this.confirmations.has(key)) throw new Error('Ya apoyaste este reporte anteriormente.');
     const inc = this.incidents.find(i => i.id === incidentId);
@@ -220,6 +293,16 @@ class IncidentApiService {
   // ── Gestión (Admin) ────────────────────────────────────────────────────────
 
   async updateStatus(incidentId: string, targetStatus: IncidentStatus, note?: string): Promise<void> {
+    // ── Modo AWS real ──────────────────────────────────────────────────────
+    if (USE_AWS) {
+      try {
+        await remoteApi.updateStatus(incidentId, targetStatus, note);
+        return;
+      } catch (err) {
+        console.warn('[Civora] updateStatus AWS falló, usando demo local:', err);
+      }
+    }
+    // ── Modo demo local ────────────────────────────────────────────────────
     const inc = this.incidents.find(i => i.id === incidentId);
     if (!inc) throw new Error('Incidente no encontrado.');
     const v = validateStatusTransition(inc.status, targetStatus, note);
@@ -230,6 +313,16 @@ class IncidentApiService {
   }
 
   async linkDuplicate(childId: string, parentId: string): Promise<void> {
+    // ── Modo AWS real ──────────────────────────────────────────────────────
+    if (USE_AWS) {
+      try {
+        await remoteApi.linkDuplicate(childId, parentId);
+        return;
+      } catch (err) {
+        console.warn('[Civora] linkDuplicate AWS falló, usando demo local:', err);
+      }
+    }
+    // ── Modo demo local ────────────────────────────────────────────────────
     const child = this.incidents.find(i => i.id === childId);
     const parent = this.incidents.find(i => i.id === parentId);
     if (!child || !parent) throw new Error('Uno o ambos reportes no existen.');

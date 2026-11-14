@@ -1,14 +1,14 @@
-/**
+﻿/**
  * apiClient.ts — Cliente HTTP para la API de Civora en AWS API Gateway
  *
  * Funciona en dos modos automáticamente:
  *   - DEMO: Sin credenciales AWS (VITE_API_URL vacío) → usa LocalApiService (localStorage)
- *   - REAL: Con VITE_API_URL configurado → llama a API Gateway con JWT de Cognito
+ *   - REAL: Con VITE_API_URL configurado → llama a API Gateway con JWT (ID token) de Cognito
  */
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-/** Obtiene el JWT de Cognito (si Amplify está activo) o devuelve null */
+/** Obtiene el ID Token de Cognito (si Amplify está activo) o devuelve null */
 async function getJwt(): Promise<string | null> {
   try {
     const { fetchAuthSession } = await import('aws-amplify/auth');
@@ -47,9 +47,12 @@ export async function apiFetch<T = unknown>(
   if (!response.ok) {
     let errorMsg = `HTTP ${response.status}`;
     if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('civora:auth_required'));
+      }
       errorMsg = jwt
         ? 'Tu sesión expiró o no es válida. Vuelve a iniciar sesión.'
-        : 'Necesitas iniciar sesión con tu cuenta para hacer esto.';
+        : 'Necesitas iniciar sesión con tu cuenta para continuar.';
     }
     try {
       const body = await response.json();
@@ -63,21 +66,21 @@ export async function apiFetch<T = unknown>(
   return response.json() as Promise<T>;
 }
 
-/** GET /incidents */
+/** Endpoints remotos de la API de Civora */
 export const remoteApi = {
   getIncidents: (params?: Record<string, string>) => {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-    return apiFetch<{ items: unknown[]; nextToken?: string }>(`/incidents${qs}`);
+    return apiFetch<{ items: unknown[]; nextToken?: string; count?: number }>(`/incidents${qs}`);
   },
 
   getMyIncidents: () =>
-    apiFetch<{ items: unknown[]; nextToken?: string }>('/me/incidents'),
+    apiFetch<{ items: unknown[]; nextToken?: string; count?: number }>('/me/incidents'),
 
   getIncidentById: (id: string) =>
     apiFetch<unknown>(`/incidents/${id}`),
 
   createIncident: (body: Record<string, unknown>, idempotencyKey?: string) =>
-    apiFetch<{ incidentId: string; isProcessing: boolean }>('/incidents', {
+    apiFetch<{ incidentId: string; executionArn?: string; status?: string; isProcessing: boolean; message?: string }>('/incidents', {
       method: 'POST',
       headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
       body: JSON.stringify(body),
@@ -92,10 +95,10 @@ export const remoteApi = {
       body: JSON.stringify({ status, publicNote }),
     }),
 
-  linkDuplicate: (childId: string, parentId: string) =>
+  linkDuplicate: (childId: string, parentIncidentId: string) =>
     apiFetch<void>(`/incidents/${childId}/link-duplicate`, {
       method: 'POST',
-      body: JSON.stringify({ parentId }),
+      body: JSON.stringify({ parentIncidentId }),
     }),
 
   presignUpload: (filename: string, contentType: string, sizeBytes?: number) =>
@@ -105,6 +108,7 @@ export const remoteApi = {
       fields: Record<string, string>;
       key: string;
       objectKey?: string;
+      expiresInSeconds?: number;
     }>('/uploads/presign', {
       method: 'POST',
       body: JSON.stringify({ filename, contentType, sizeBytes }),

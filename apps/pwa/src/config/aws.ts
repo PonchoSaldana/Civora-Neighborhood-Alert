@@ -1,39 +1,53 @@
 // Configuración de AWS Amplify para Civora
-// Los valores reales se inyectan por variables de entorno VITE_* en .env.local
-// Ver .env.example para las variables necesarias
+import { Amplify } from 'aws-amplify';
 
-const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/` : 'http://localhost:5173/';
+export const isSocialEnabled = import.meta.env.VITE_ENABLE_SOCIAL === 'true';
+
+const redirectUrl = typeof window !== 'undefined' ? (window.location.origin + '/') : 'http://localhost:5173/';
+
+const userPoolId = import.meta.env.VITE_COGNITO_USER_POOL_ID || 'us-east-2_dckXMxoiO';
+const userPoolClientId = import.meta.env.VITE_COGNITO_CLIENT_ID || 'qj34vrm8pjpo7sddvsuqo6be';
+const region = import.meta.env.VITE_AWS_REGION || 'us-east-2';
+const apiUrl = import.meta.env.VITE_API_URL || 'https://bts56gzayk.execute-api.us-east-2.amazonaws.com/dev';
 
 export const amplifyConfig = {
   Auth: {
     Cognito: {
-      userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID || '',
-      userPoolClientId: import.meta.env.VITE_COGNITO_CLIENT_ID || '',
+      userPoolId,
+      userPoolClientId,
       loginWith: {
         email: true,
-        oauth: {
-          domain: import.meta.env.VITE_COGNITO_DOMAIN || '',
-          scopes: ['email', 'openid', 'profile'],
-          redirectSignIn: [redirectUrl],
-          redirectSignOut: [redirectUrl],
-          responseType: 'code' as const,
-          providers: ['Google', 'Facebook']
-        }
-      },
-    },
+        ...(isSocialEnabled && import.meta.env.VITE_COGNITO_DOMAIN
+          ? {
+              oauth: {
+                domain: import.meta.env.VITE_COGNITO_DOMAIN,
+                scopes: ['email', 'openid', 'profile'],
+                redirectSignIn: [redirectUrl],
+                redirectSignOut: [redirectUrl],
+                responseType: 'code' as const,
+                providers: ['Google', 'Facebook']
+              }
+            }
+          : {})
+      }
+    }
   },
   API: {
     REST: {
       CivoraApi: {
-        endpoint: import.meta.env.VITE_API_URL || '',
-        region: import.meta.env.VITE_AWS_REGION || 'us-east-1',
-      },
-    },
-  },
+        endpoint: apiUrl,
+        region
+      }
+    }
+  }
 };
 
-// Verifica si hay configuración real de AWS disponible
-export const isAwsConfigured =
-  !!import.meta.env.VITE_COGNITO_USER_POOL_ID &&
-  !!import.meta.env.VITE_COGNITO_CLIENT_ID &&
-  !!import.meta.env.VITE_API_URL;
+export const isAwsConfigured = Boolean(userPoolId && userPoolClientId && apiUrl);
+
+if (isAwsConfigured) {
+  try {
+    Amplify.configure(amplifyConfig as any);
+  } catch (err) {
+    console.warn('[Civora] Error al configurar Amplify:', err);
+  }
+}

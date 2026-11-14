@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { ShieldCheck, AlertCircle, Eye, EyeOff, UserCheck, Ghost, ArrowRight } from 'lucide-react';
-import { UserSession } from '../context/AuthContext.js';
+﻿import React, { useState } from 'react';
+import { ShieldCheck, AlertCircle, Eye, EyeOff, UserCheck, Ghost, ArrowRight, KeyRound } from 'lucide-react';
+import { UserSession, deriveRoleFromGroups } from '../context/AuthContext.js';
 import { authService } from '../services/auth.js';
-import { isAwsConfigured } from '../config/aws.js';
+import { isAwsConfigured, isSocialEnabled } from '../config/aws.js';
 
 interface LoginPageProps {
   onLogin: (session: UserSession) => void;
@@ -32,188 +32,186 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* ── Login con Redes Sociales (Google / Facebook) ── */
+  // Estado para cambio de contraseña obligatorio (flujo NEW_PASSWORD_REQUIRED de Cognito)
+  const [requiresNewPassword, setRequiresNewPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  /* ── Login con Redes Sociales (oculto por defecto) ── */
   const handleSocialLogin = async (provider: 'Google' | 'Facebook') => {
+    if (!isSocialEnabled) return;
     setError(null);
     setLoading(true);
 
-    // 1. Si AWS Cognito está configurado completamente con OAuth
-    if (isAwsConfigured) {
-      try {
-        await authService.signInWithSocial(provider);
-        return;
-      } catch (err: any) {
-        console.warn('Fallo Cognito OAuth, intentando SDK directo:', err);
-      }
-    }
-
-    // 2. Google Identity Services (SDK oficial)
-    if (provider === 'Google') {
-      const googleClientId =
-        import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-        '27805880482-c1g5elb68k0gd1ftidnres9c30duvqb5.apps.googleusercontent.com';
-
-      const googleObj = (window as any).google;
-      if (googleObj?.accounts?.oauth2 && googleClientId) {
-        try {
-          const tokenClient = googleObj.accounts.oauth2.initTokenClient({
-            client_id: googleClientId,
-            scope: 'email profile openid',
-            callback: async (tokenResponse: any) => {
-              if (tokenResponse.error) {
-                setError(`Google Sign-In: ${tokenResponse.error_description || tokenResponse.error}`);
-                setLoading(false);
-                return;
-              }
-              try {
-                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                });
-                if (!res.ok) throw new Error('No se pudo obtener información de Google');
-                const profile = await res.json();
-                onLogin({
-                  sub: profile.sub || `usr-google-${Date.now()}`,
-                  email: profile.email || 'usuario@gmail.com',
-                  displayName: profile.name || profile.given_name || profile.email?.split('@')[0] || 'Vecino Google',
-                  role: 'USUARIO',
-                  mode: 'registered',
-                  provider: 'google'
-                });
-              } catch (profileErr: any) {
-                setError('Error al consultar el perfil de usuario en Google.');
-              } finally {
-                setLoading(false);
-              }
-            },
-            error_callback: (err: any) => {
-              setError(`Error en Google Login (${err.type || 'origen no autorizado'}). Revisa los orígenes autorizados en Google Cloud Console.`);
-              setLoading(false);
-            }
-          });
-
-          tokenClient.requestAccessToken({ prompt: 'select_account' });
-          return;
-        } catch (sdkErr: any) {
-          console.warn('Error al iniciar tokenClient de Google:', sdkErr);
-        }
-      }
-    }
-
-    // 3. Facebook JavaScript SDK (SDK oficial)
-    if (provider === 'Facebook') {
-      const facebookAppId = import.meta.env.VITE_FACEBOOK_APP_ID;
-      const fb = (window as any).FB;
-
-      if (fb && facebookAppId) {
-        try {
-          fb.init({
-            appId: facebookAppId,
-            cookie: true,
-            xfbml: true,
-            version: 'v21.0'
-          });
-
-          fb.login((response: any) => {
-            if (response.authResponse) {
-              fb.api('/me', { fields: 'name,email' }, (profile: any) => {
-                onLogin({
-                  sub: profile.id || `usr-fb-${Date.now()}`,
-                  email: profile.email || `${(profile.name || 'vecino').toLowerCase().replace(/\s+/g, '')}@facebook.com`,
-                  displayName: profile.name || 'Vecino Facebook',
-                  role: 'USUARIO',
-                  mode: 'registered',
-                  provider: 'facebook'
-                });
-                setLoading(false);
-              });
-            } else {
-              setError('Inicio de sesión con Facebook cancelado o no autorizado.');
-              setLoading(false);
-            }
-          }, { scope: 'public_profile,email' });
-          return;
-        } catch (fbErr: any) {
-          console.warn('Error al inicializar Facebook SDK:', fbErr);
-        }
-      } else if (!facebookAppId) {
-        // Notificación de que falta el App ID de Facebook
-        setError('Para usar Facebook Login real, define VITE_FACEBOOK_APP_ID en tu archivo .env. Entrando en modo demostración...');
-      }
-    }
-
-    // 4. Fallback de demostración rápida si el SDK no respondió o no hay App ID configurado
-    setTimeout(() => {
-      onLogin({
-        sub: `usr-${provider.toLowerCase()}-${Date.now().toString().slice(-4)}`,
-        email: provider === 'Google' ? 'vecino.civora@gmail.com' : 'vecino.civora@facebook.com',
-        displayName: provider === 'Google' ? 'Vecino Google' : 'Vecino Facebook',
-        role: 'USUARIO',
-        mode: 'registered',
-        provider: provider === 'Google' ? 'google' : 'facebook'
-      });
+    try {
+      await authService.signInWithSocial(provider);
+    } catch (err: any) {
+      setError(err.message || 'Error al conectar con el proveedor social.');
       setLoading(false);
-    }, 600);
+    }
   };
 
-  /* ── Login con cuenta local / correo ── */
+  /* ── Iniciar sesión ── */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!email || !password) { setError('Completa todos los campos.'); return; }
+    if (!email.trim() || !password) {
+      setError('Por favor, ingresa tu correo y contraseña.');
+      return;
+    }
 
     setLoading(true);
+
+    // ── MODO REAL CON AWS COGNITO ──────────────────────────
+    if (isAwsConfigured) {
+      try {
+        const result = await authService.signIn(email.trim(), password);
+
+        if (result.step === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+          setRequiresNewPassword(true);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+
+        if (result.step === 'CONFIRM_SIGN_UP') {
+          setError('Tu cuenta aún no ha sido confirmada. Revisa tu correo electrónico para activarla.');
+          setLoading(false);
+          return;
+        }
+
+        if (result.step === 'DONE') {
+          const session = await authService.getSession();
+          const userObj = session?.user || result.user;
+          if (userObj) {
+            const { role, hasNoRole } = deriveRoleFromGroups(userObj.groups || []);
+            const displayName = userObj.email ? userObj.email.split('@')[0] : 'Usuario';
+            onLogin({
+              sub: userObj.sub,
+              email: userObj.email,
+              displayName,
+              role,
+              groups: userObj.groups || [],
+              mode: 'registered',
+              hasNoRole,
+              provider: 'cognito',
+            });
+            return;
+          }
+        }
+
+        setError('No se pudo verificar la sesión. Inténtalo de nuevo.');
+      } catch (err: any) {
+        setError(err.message || 'Error al iniciar sesión.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // ── MODO DEMO LOCAL (sin AWS) ──────────────────────────
     setTimeout(() => {
-      // Credenciales de administrador (demo)
       const ADMIN_EMAIL = 'admin@civora.com';
-      const ADMIN_PASS  = 'admin1234';
+      const ADMIN_PASS = 'admin1234';
       const isAdmin = email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASS;
+
       if (!isAdmin && email.toLowerCase() === ADMIN_EMAIL) {
         setError('Contraseña incorrecta.');
         setLoading(false);
         return;
       }
+
       onLogin({
         sub: `usr-${Date.now()}`,
-        email,
+        email: email.trim(),
         displayName: isAdmin ? 'Administrador' : email.split('@')[0],
         role: isAdmin ? 'ADMIN' : 'USUARIO',
+        groups: isAdmin ? ['ADMIN'] : ['REPORTER'],
         mode: 'registered',
-        provider: 'local'
+        provider: 'local',
       });
       setLoading(false);
-    }, 500);
+    }, 400);
   };
 
-  /* ── Registro de cuenta nueva ── */
+  /* ── Confirmar nueva contraseña obligatoria (Cognito) ── */
+  const handleConfirmNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (newPassword.length < 8) {
+      setError('La nueva contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setError('Las contraseñas no coinciden.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await authService.confirmNewPassword(newPassword);
+      if (result.step === 'DONE') {
+        const session = await authService.getSession();
+        const userObj = session?.user || result.user;
+        if (userObj) {
+          const { role, hasNoRole } = deriveRoleFromGroups(userObj.groups || []);
+          const displayName = userObj.email ? userObj.email.split('@')[0] : 'Usuario';
+          onLogin({
+            sub: userObj.sub,
+            email: userObj.email,
+            displayName,
+            role,
+            groups: userObj.groups || [],
+            mode: 'registered',
+            hasNoRole,
+            provider: 'cognito',
+          });
+          return;
+        }
+      }
+      setError('No se pudo completar el cambio de contraseña.');
+    } catch (err: any) {
+      setError(err.message || 'Error al actualizar la contraseña.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ── Registro de cuenta (solo activo en demo o con Cognito) ── */
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!name.trim()) { setError('Escribe tu nombre o apodo.'); return; }
     if (!email || !password) { setError('Completa todos los campos.'); return; }
-    if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
+    if (password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres.'); return; }
 
     setLoading(true);
     setTimeout(() => {
       onLogin({
         sub: `usr-${Date.now()}`,
-        email,
+        email: email.trim(),
         displayName: name.trim(),
         role: 'USUARIO',
+        groups: ['REPORTER'],
         mode: 'registered',
-        provider: 'local'
+        provider: 'local',
       });
       setLoading(false);
-    }, 500);
+    }, 400);
   };
 
-  /* ── Entrar sin cuenta (invitado) ── */
+  /* ── Entrar como invitado (solo en modo demo local) ── */
   const handleGuest = () => {
     onLogin({
       sub: null,
       email: null,
       displayName: 'Invitado',
       role: 'USUARIO',
-      mode: 'guest'
+      groups: [],
+      mode: 'guest',
     });
   };
 
@@ -223,7 +221,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '24px 16px'
+      padding: '24px 16px',
     }}>
       <div
         className="glass-strong"
@@ -231,211 +229,325 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           width: '100%',
           maxWidth: '420px',
           borderRadius: 'var(--radius-lg)',
-          overflow: 'hidden'
+          overflow: 'hidden',
         }}
       >
-        {/* ── Cabecera con logo oficial más grande ── */}
+        {/* Cabecera con logo */}
         <div style={{
           padding: '32px 28px 20px 28px',
           borderBottom: '1px solid var(--hairline)',
-          textAlign: 'center'
+          textAlign: 'center',
         }}>
           <img
             src="/logo.png"
             alt="Civora Logo"
             style={{
-              width: '110px',
-              height: '110px',
+              width: '100px',
+              height: '100px',
               objectFit: 'contain',
               display: 'block',
-              margin: '0 auto 14px auto',
-              filter: 'drop-shadow(0 4px 12px rgba(66, 133, 244, 0.25))'
+              margin: '0 auto 12px auto',
+              filter: 'drop-shadow(0 4px 12px rgba(66, 133, 244, 0.25))',
             }}
           />
           <h1 style={{ fontSize: 'var(--text-2xl, 24px)', fontWeight: 700, letterSpacing: '-0.5px' }}>
             Civora
           </h1>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginTop: '4px' }}>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '4px' }}>
+            {isAwsConfigured ? 'Acceso a la plataforma comunitaria' : 'Modo Demostración Local'}
           </p>
         </div>
 
         <div style={{ padding: '20px 24px 28px 24px' }}>
-          {/* ── Botón Invitado (sin registro) ── */}
-          <button
-            onClick={handleGuest}
-            className="glass"
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-md)',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              cursor: 'pointer',
-              borderLeft: '4px solid var(--accent)'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Ghost size={20} color="var(--accent)" />
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>
-                  Entrar sin registrarme
+          {/* Formulario de cambio de contraseña obligatorio */}
+          {requiresNewPassword ? (
+            <form onSubmit={handleConfirmNewPassword}>
+              <div style={{
+                background: 'var(--glass)',
+                borderLeft: '4px solid var(--accent)',
+                padding: '12px',
+                borderRadius: 'var(--radius-sm)',
+                marginBottom: '16px',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--text)',
+              }}>
+                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <KeyRound size={14} /> Nueva contraseña requerida
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Explora reportes y reporta de forma anónima
-                </div>
+                Tu cuenta requiere establecer una nueva contraseña permanente antes de continuar.
               </div>
-            </div>
-            <ArrowRight size={16} color="var(--accent)" />
-          </button>
 
-          {/* ── Tabs Login / Registro ── */}
-          <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr',
-            background: 'var(--glass)', borderRadius: 'var(--radius-sm)',
-            padding: '3px', marginBottom: '16px', gap: '4px'
-          }}>
-            {(['login', 'register'] as const).map(t => (
-              <button key={t} onClick={() => { setTab(t); setError(null); }}
-                style={{
-                  padding: '7px', borderRadius: 'calc(var(--radius-sm) - 2px)',
-                  fontSize: 'var(--text-xs)', fontWeight: tab === t ? 600 : 400,
-                  background: tab === t ? 'var(--accent)' : 'transparent',
-                  color: tab === t ? 'var(--on-accent)' : 'var(--text)'
+              {error && (
+                <div role="alert" style={{
+                  background: 'var(--danger)', color: '#fff',
+                  padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--text-xs)', marginBottom: '14px',
+                  display: 'flex', alignItems: 'center', gap: '8px',
                 }}>
-                {t === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
-              </button>
-            ))}
-          </div>
+                  <AlertCircle size={15} /> {error}
+                </div>
+              )}
 
-          {/* ── Mensaje de Error ── */}
-          {error && (
-            <div role="alert" style={{
-              background: 'var(--danger)', color: '#fff',
-              padding: '8px 12px', borderRadius: 'var(--radius-sm)',
-              fontSize: 'var(--text-xs)', marginBottom: '14px',
-              display: 'flex', alignItems: 'center', gap: '8px'
-            }}>
-              <AlertCircle size={15} /> {error}
-            </div>
-          )}
-
-          {/* ── Formulario Correo / Contraseña ── */}
-          <form onSubmit={tab === 'login' ? handleLogin : handleRegister}>
-            {tab === 'register' && (
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label htmlFor="reg-name" className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Nombre o apodo</label>
-                <input id="reg-name" type="text" className="form-input" style={{ height: '38px', fontSize: 'var(--text-sm)' }}
-                  placeholder="Ej. María Pérez"
-                  value={name} onChange={e => setName(e.target.value)} autoComplete="name" />
+                <label htmlFor="auth-new-password" className="form-label" style={{ fontSize: 'var(--text-xs)' }}>
+                  Nueva contraseña (mínimo 8 caracteres)
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="auth-new-password"
+                    type={showNewPassword ? 'text' : 'password'}
+                    className="form-input"
+                    style={{ height: '38px', fontSize: 'var(--text-sm)', paddingRight: '40px' }}
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    aria-label={showNewPassword ? 'Ocultar' : 'Mostrar'}
+                    style={{
+                      position: 'absolute', right: '10px', top: '50%',
+                      transform: 'translateY(-50%)', color: 'var(--text-muted)', background: 'transparent',
+                    }}
+                  >
+                    {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
-            )}
 
-            <div className="form-group" style={{ marginBottom: '12px' }}>
-              <label htmlFor="auth-email" className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Correo electrónico</label>
-              <input id="auth-email" type="email" className="form-input" style={{ height: '38px', fontSize: 'var(--text-sm)' }}
-                placeholder="tu@correo.com"
-                value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '14px' }}>
-              <label htmlFor="auth-password" className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Contraseña</label>
-              <div style={{ position: 'relative' }}>
-                <input id="auth-password"
-                  type={showPassword ? 'text' : 'password'}
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label htmlFor="auth-confirm-password" className="form-label" style={{ fontSize: 'var(--text-xs)' }}>
+                  Confirmar nueva contraseña
+                </label>
+                <input
+                  id="auth-confirm-password"
+                  type="password"
                   className="form-input"
-                  style={{ height: '38px', fontSize: 'var(--text-sm)', paddingRight: '40px' }}
+                  style={{ height: '38px', fontSize: 'var(--text-sm)' }}
                   placeholder="••••••••"
-                  value={password} onChange={e => setPassword(e.target.value)}
-                  autoComplete={tab === 'login' ? 'current-password' : 'new-password'} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Ocultar' : 'Mostrar'}
-                  style={{
-                    position: 'absolute', right: '10px', top: '50%',
-                    transform: 'translateY(-50%)', color: 'var(--text-muted)', background: 'transparent'
-                  }}>
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  autoComplete="new-password"
+                  required
+                />
               </div>
-            </div>
 
-            <button type="submit" disabled={loading} className="btn-primary" style={{ width: '100%', height: '42px', fontSize: 'var(--text-sm)' }}>
-              <UserCheck size={16} />
-              {loading ? 'Verificando...' : tab === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary"
+                style={{ width: '100%', height: '42px', fontSize: 'var(--text-sm)' }}
+              >
+                {loading ? 'Actualizando...' : 'Guardar contraseña y entrar'}
+              </button>
+            </form>
+          ) : (
+            <>
+              {/* En modo demo local, mostrar botón para entrar como invitado */}
+              {!isAwsConfigured && (
+                <button
+                  type="button"
+                  onClick={handleGuest}
+                  className="glass"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    borderLeft: '4px solid var(--accent)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Ghost size={20} color="var(--accent)" />
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>
+                        Entrar en modo demo
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Explora la interfaz con datos de demostración
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowRight size={16} color="var(--accent)" />
+                </button>
+              )}
 
-          {/* ── Divisor Social (abajo) ── */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '10px',
-            margin: '20px 0 16px 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)'
-          }}>
-            <div style={{ flex: 1, height: '1px', background: 'var(--hairline)' }} />
-            o continuar con
-            <div style={{ flex: 1, height: '1px', background: 'var(--hairline)' }} />
-          </div>
+              {/* Tabs Login / Registro (en demo) */}
+              {!isAwsConfigured && (
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr',
+                  background: 'var(--glass)', borderRadius: 'var(--radius-sm)',
+                  padding: '3px', marginBottom: '16px', gap: '4px',
+                }}>
+                  {(['login', 'register'] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => { setTab(t); setError(null); }}
+                      style={{
+                        padding: '7px', borderRadius: 'calc(var(--radius-sm) - 2px)',
+                        fontSize: 'var(--text-xs)', fontWeight: tab === t ? 600 : 400,
+                        background: tab === t ? 'var(--accent)' : 'transparent',
+                        color: tab === t ? 'var(--on-accent)' : 'var(--text)',
+                      }}
+                    >
+                      {t === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-          {/* ── Botones de Inicio de Sesión Social (Google y Facebook) hasta abajo ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '8px' }}>
-            {/* Google */}
-            <button
-              type="button"
-              onClick={() => handleSocialLogin('Google')}
-              disabled={loading}
-              className="btn-secondary"
-              style={{
-                width: '100%',
-                height: '44px',
-                background: 'var(--surface)',
-                border: '1px solid var(--hairline)',
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-                fontSize: 'var(--text-sm)',
-                fontWeight: 500,
-                color: 'var(--text)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
-              }}
-            >
-              <GoogleIcon />
-              <span>Continuar con Google</span>
-            </button>
+              {/* Mensaje de Error */}
+              {error && (
+                <div role="alert" style={{
+                  background: 'var(--danger)', color: '#fff',
+                  padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--text-xs)', marginBottom: '14px',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                }}>
+                  <AlertCircle size={15} /> {error}
+                </div>
+              )}
 
-            {/* Facebook */}
-            <button
-              type="button"
-              onClick={() => handleSocialLogin('Facebook')}
-              disabled={loading}
-              className="btn-secondary"
-              style={{
-                width: '100%',
-                height: '44px',
-                background: 'var(--surface)',
-                border: '1px solid var(--hairline)',
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-                fontSize: 'var(--text-sm)',
-                fontWeight: 500,
-                color: 'var(--text)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
-              }}
-            >
-              <FacebookIcon />
-              <span>Continuar con Facebook</span>
-            </button>
-          </div>
+              {/* Formulario Correo / Contraseña */}
+              <form onSubmit={tab === 'login' ? handleLogin : handleRegister}>
+                {!isAwsConfigured && tab === 'register' && (
+                  <div className="form-group" style={{ marginBottom: '12px' }}>
+                    <label htmlFor="reg-name" className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Nombre o apodo</label>
+                    <input
+                      id="reg-name"
+                      type="text"
+                      className="form-input"
+                      style={{ height: '38px', fontSize: 'var(--text-sm)' }}
+                      placeholder="Ej. María Pérez"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      autoComplete="name"
+                    />
+                  </div>
+                )}
 
-          {/* Nota discreta de versión */}
-          <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '16px' }}>
-            Civora v1.0 — Plataforma comunitaria de reportes
-          </p>
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label htmlFor="auth-email" className="form-label" style={{ fontSize: 'var(--text-xs)' }}>
+                    Correo electrónico
+                  </label>
+                  <input
+                    id="auth-email"
+                    type="email"
+                    className="form-input"
+                    style={{ height: '38px', fontSize: 'var(--text-sm)' }}
+                    placeholder="tu@correo.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label htmlFor="auth-password" className="form-label" style={{ fontSize: 'var(--text-xs)' }}>
+                    Contraseña
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      id="auth-password"
+                      type={showPassword ? 'text' : 'password'}
+                      className="form-input"
+                      style={{ height: '38px', fontSize: 'var(--text-sm)', paddingRight: '40px' }}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Ocultar' : 'Mostrar'}
+                      style={{
+                        position: 'absolute', right: '10px', top: '50%',
+                        transform: 'translateY(-50%)', color: 'var(--text-muted)', background: 'transparent',
+                      }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn-primary"
+                  style={{ width: '100%', height: '42px', fontSize: 'var(--text-sm)' }}
+                >
+                  <UserCheck size={16} />
+                  {loading ? 'Verificando...' : tab === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}
+                </button>
+              </form>
+
+              {/* Botones Sociales (solo si VITE_ENABLE_SOCIAL=true) */}
+              {isSocialEnabled && (
+                <>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    margin: '20px 0 16px 0', fontSize: 'var(--text-xs)', color: 'var(--text-muted)',
+                  }}>
+                    <div style={{ flex: 1, height: '1px', background: 'var(--hairline)' }} />
+                    o continuar con
+                    <div style={{ flex: 1, height: '1px', background: 'var(--hairline)' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleSocialLogin('Google')}
+                      disabled={loading}
+                      className="btn-secondary"
+                      style={{
+                        width: '100%', height: '44px',
+                        background: 'var(--surface)',
+                        border: '1px solid var(--hairline)',
+                        borderRadius: 'var(--radius-sm)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: '10px', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text)',
+                      }}
+                    >
+                      <GoogleIcon />
+                      <span>Continuar con Google</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSocialLogin('Facebook')}
+                      disabled={loading}
+                      className="btn-secondary"
+                      style={{
+                        width: '100%', height: '44px',
+                        background: 'var(--surface)',
+                        border: '1px solid var(--hairline)',
+                        borderRadius: 'var(--radius-sm)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: '10px', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text)',
+                      }}
+                    >
+                      <FacebookIcon />
+                      <span>Continuar con Facebook</span>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              
+            </>
+          )}
         </div>
       </div>
     </div>

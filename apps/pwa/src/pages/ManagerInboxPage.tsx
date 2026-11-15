@@ -28,8 +28,8 @@ export const ManagerInboxPage: React.FC = () => {
       } else if (data.length === 0) {
         setSelectedIncident(null);
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // Manejo silencioso
     } finally {
       setLoading(false);
     }

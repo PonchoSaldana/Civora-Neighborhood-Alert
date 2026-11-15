@@ -41,8 +41,8 @@ export const MapPage: React.FC = () => {
       .then((list) => {
         setIncidents(list);
       })
-      .catch((e) => {
-        console.warn('[MapPage] No se pudieron cargar incidentes (modo invitado o red):', e.message);
+      .catch(() => {
+        // Fallback manejado internamente
       });
   }, []);
 

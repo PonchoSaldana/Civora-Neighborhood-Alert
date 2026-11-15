@@ -20,8 +20,8 @@ export const HomePage: React.FC = () => {
     try {
       const data = await api.getIncidents({ areaId: searchArea || undefined });
       setIncidents(data);
-    } catch (e: any) {
-      console.error(e);
+    } catch {
+      // Manejo de error de conexión silencioso
     } finally {
       setLoading(false);
     }

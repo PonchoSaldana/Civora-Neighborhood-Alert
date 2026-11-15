@@ -8,12 +8,9 @@ import { amplifyConfig, isAwsConfigured } from './config/aws.js';
 if (isAwsConfigured) {
   import('aws-amplify').then(({ Amplify }) => {
     Amplify.configure(amplifyConfig as any);
-    console.info('[Civora] AWS Amplify configurado con User Pool y API Gateway reales.');
   }).catch((e) => {
     console.warn('[Civora] No se pudo inicializar Amplify:', e);
   });
-} else {
-  console.info('[Civora] Modo demo local — sin credenciales AWS. Para conectar AWS, configura las variables en .env.local según .env.example.');
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

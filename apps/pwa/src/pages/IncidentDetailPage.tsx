@@ -58,7 +58,8 @@ export const IncidentDetailPage: React.FC = () => {
       const data = await api.getIncidentById(id);
       if (data) {
         setIncident(data);
-        setComments(data.comments || []);
+        const cmts = await api.getComments(id);
+        setComments(cmts.length > 0 ? cmts : (data.comments || []));
         const validNext = (ALLOWED_TRANSITIONS[data.status] || [])[0];
         if (validNext) setTargetStatus(validNext);
       } else {
@@ -116,6 +117,7 @@ export const IncidentDetailPage: React.FC = () => {
       );
 
       setComments((prev) => [...prev, newComment]);
+      setIncident((prev) => prev ? { ...prev, commentCount: (prev.commentCount || 0) + 1 } : prev);
       setCommentText('');
       setToastMessage('Comentario publicado correctamente.');
     } catch (err: any) {

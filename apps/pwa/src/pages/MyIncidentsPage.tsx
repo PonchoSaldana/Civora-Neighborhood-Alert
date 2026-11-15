@@ -27,8 +27,8 @@ export const MyIncidentsPage: React.FC = () => {
       } else {
         setIncidents([]);
       }
-    } catch (e: any) {
-      console.warn('[MyIncidentsPage] Error al cargar incidentes:', e?.message);
+    } catch {
+      // Manejo silencioso de error en carga
     } finally {
       setLoading(false);
     }

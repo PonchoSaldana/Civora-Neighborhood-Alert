@@ -77,7 +77,6 @@ const AppRoutes: React.FC = () => {
 
   // Muestra LoginPage si el usuario aún no eligió cómo entrar (o se forzó la modal).
   const needsLogin = !sessionChosen || showLoginModal;
-  console.log('[Civora App] render state:', { sessionChosen, showLoginModal, needsLogin, loading, isRegistered, isGuest });
 
   if (needsLogin) {
     return (

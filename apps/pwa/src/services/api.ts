@@ -7,12 +7,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 /** true cuando se proporcionaron credenciales AWS reales */
 export const USE_AWS = !!API_BASE_URL;
 
-if (!USE_AWS) {
-  console.info('[Civora] VITE_API_URL no está definida. La app opera en MODO DEMO LOCAL (datos en localStorage). Para conectar a AWS DynamoDB y S3, define VITE_API_URL en el archivo .env');
-} else {
-  console.info('[Civora] Modo AWS activo conectado a:', API_BASE_URL);
-}
-
 // ─── Datos sintéticos de demostración ────────────────────────────────────────
 const SYNTHETIC: Incident[] = [
   {
@@ -111,24 +105,57 @@ class IncidentApiService {
     } catch {}
   }
 
+  private loadCommentsFromStorage(): Record<string, IncidentComment[]> {
+    try {
+      const savedComments = localStorage.getItem('civora_comments');
+      if (savedComments) {
+        this.comments = JSON.parse(savedComments);
+      }
+    } catch {}
+    return this.comments;
+  }
+
   // ── Incidentes ─────────────────────────────────────────────────────────────
 
   async getIncidents(params?: { status?: IncidentStatus; areaId?: string; mine?: boolean; userSub?: string | null }): Promise<Incident[]> {
     // ── Modo AWS real ──────────────────────────────────────────────────────
     if (USE_AWS) {
       try {
+        this.loadCommentsFromStorage();
         if (params?.mine) {
           const res = await remoteApi.getMyIncidents();
-          return (res.items as Incident[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          return (res.items as Incident[]).map(item => {
+            const cmts = this.comments[item.id] || SYNTHETIC_COMMENTS[item.id] || [];
+            return {
+              ...item,
+              comments: cmts,
+              commentCount: Math.max(item.commentCount || 0, cmts.length)
+            };
+          }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         }
         const qp: Record<string, string> = {};
         if (params?.status) qp.status = params.status;
         if (params?.areaId) qp.areaId = params.areaId;
         const res = await remoteApi.getIncidents(qp);
-        return (res.items as Incident[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return (res.items as Incident[]).map(item => {
+          const cmts = this.comments[item.id] || SYNTHETIC_COMMENTS[item.id] || [];
+          return {
+            ...item,
+            comments: cmts,
+            commentCount: Math.max(item.commentCount || 0, cmts.length)
+          };
+        }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       } catch (err: any) {
         // En modo invitado (o sin sesión en AWS que produce 401), entregar siempre los datos de muestra
-        let results = [...SYNTHETIC];
+        this.loadCommentsFromStorage();
+        let results = [...SYNTHETIC].map(item => {
+          const cmts = this.comments[item.id] || SYNTHETIC_COMMENTS[item.id] || [];
+          return {
+            ...item,
+            comments: cmts,
+            commentCount: Math.max(item.commentCount || 0, cmts.length)
+          };
+        });
         if (params?.status) results = results.filter(i => i.status === params.status);
         if (params?.areaId) results = results.filter(i => i.areaId.toLowerCase().includes(params.areaId!.toLowerCase()));
         return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -136,7 +163,15 @@ class IncidentApiService {
     }
 
     // ── Modo demo local ────────────────────────────────────────────────────
-    let results = [...this.incidents];
+    this.loadCommentsFromStorage();
+    let results = [...this.incidents].map(item => {
+      const cmts = this.comments[item.id] || SYNTHETIC_COMMENTS[item.id] || [];
+      return {
+        ...item,
+        comments: cmts,
+        commentCount: Math.max(item.commentCount || 0, cmts.length)
+      };
+    });
     if (params?.mine) {
       let myIds: string[] = [];
       try {
@@ -151,21 +186,30 @@ class IncidentApiService {
   }
 
   async getIncidentById(id: string): Promise<Incident | null> {
+    this.loadCommentsFromStorage();
     // ── Modo AWS real ──────────────────────────────────────────────────────
     if (USE_AWS) {
       try {
-        const inc = await remoteApi.getIncidentById(id);
-        return inc as Incident;
+        const inc = await remoteApi.getIncidentById(id) as Incident | null;
+        if (!inc) return null;
+        const cmts = this.comments[id] || SYNTHETIC_COMMENTS[id] || [];
+        return {
+          ...inc,
+          comments: cmts,
+          commentCount: Math.max((inc as any).commentCount || 0, cmts.length)
+        } as Incident;
       } catch (err: any) {
         const inc = SYNTHETIC.find(i => i.id === id) || null;
         if (!inc) return null;
-        return { ...inc, comments: SYNTHETIC_COMMENTS[id] || [] };
+        const cmts = this.comments[id] || SYNTHETIC_COMMENTS[id] || [];
+        return { ...inc, comments: cmts, commentCount: Math.max(inc.commentCount || 0, cmts.length) };
       }
     }
     // ── Modo demo local ────────────────────────────────────────────────────
     const inc = this.incidents.find(i => i.id === id) || null;
     if (!inc) return null;
-    return { ...inc, comments: this.comments[id] || [] };
+    const cmts = this.comments[id] || SYNTHETIC_COMMENTS[id] || [];
+    return { ...inc, comments: cmts, commentCount: Math.max(inc.commentCount || 0, cmts.length) };
   }
 
   async createIncident(payload: {
@@ -310,6 +354,8 @@ class IncidentApiService {
     if (!content.trim()) throw new Error('El comentario no puede estar vacío.');
     if (content.length > 500) throw new Error('El comentario no puede superar 500 caracteres.');
 
+    this.loadCommentsFromStorage();
+
     const comment: IncidentComment = {
       commentId: `cmt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       incidentId, authorName, authorId, isAdmin,
@@ -317,7 +363,9 @@ class IncidentApiService {
       createdAt: new Date().toISOString()
     };
 
-    if (!this.comments[incidentId]) this.comments[incidentId] = [];
+    if (!this.comments[incidentId]) {
+      this.comments[incidentId] = [...(SYNTHETIC_COMMENTS[incidentId] || [])];
+    }
     this.comments[incidentId].push(comment);
 
     const inc = this.incidents.find(i => i.id === incidentId);
@@ -328,7 +376,8 @@ class IncidentApiService {
   }
 
   async getComments(incidentId: string): Promise<IncidentComment[]> {
-    return this.comments[incidentId] || [];
+    this.loadCommentsFromStorage();
+    return this.comments[incidentId] || SYNTHETIC_COMMENTS[incidentId] || [];
   }
 
   // ── Gestión (Admin) ────────────────────────────────────────────────────────

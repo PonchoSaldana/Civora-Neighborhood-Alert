@@ -3,7 +3,6 @@ import { Link, NavLink } from 'react-router-dom';
 import {
   Sun,
   Moon,
-  LogOut,
   User,
   Ghost,
   ShieldCheck,
@@ -161,15 +160,6 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
           style={{ width: '34px', height: '34px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {effectiveTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
-
-        {/* Cerrar sesión */}
-        {onLogout && (
-          <button onClick={onLogout} aria-label="Cerrar sesión" title="Cerrar sesión"
-            className="btn-secondary"
-            style={{ width: '34px', height: '34px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <LogOut size={16} />
-          </button>
-        )}
       </div>
     </header>
   );

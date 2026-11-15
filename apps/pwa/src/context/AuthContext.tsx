@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserRole, SessionMode } from '@shared/types.js';
 import { authService, AuthUser } from '../services/auth.js';
 import { isAwsConfigured } from '../config/aws.js';
@@ -37,10 +37,9 @@ export const GUEST_SESSION: UserSession = {
 };
 
 /**
- * El rol de la interfaz sale ÚNICAMENTE de los grupos del token Cognito:
+ * El rol de la interfaz sale de los grupos del token Cognito:
  * - MANAGER o ADMIN => vista de gestor ('ADMIN')
- * - REPORTER => vista de usuario ('USUARIO')
- * - Sin grupos => usuario sin rol asignado
+ * - REPORTER o sin grupos específicos => rol 'USUARIO' (REPORTER por defecto al registrarse)
  */
 export function deriveRoleFromGroups(groups: string[]): { role: UserRole; hasNoRole: boolean } {
   const upper = groups.map((g) => g.toUpperCase());
@@ -50,7 +49,9 @@ export function deriveRoleFromGroups(groups: string[]): { role: UserRole; hasNoR
   if (upper.includes('REPORTER') || upper.includes('USUARIO')) {
     return { role: 'USUARIO', hasNoRole: false };
   }
-  return { role: 'USUARIO', hasNoRole: true };
+  // Al registrarse un usuario común en Cognito, si el User Pool aún no tiene un trigger post-confirmación
+  // para asignarlo al grupo REPORTER, se asume por defecto como REPORTER ('USUARIO') sin advertencia confusa.
+  return { role: 'USUARIO', hasNoRole: false };
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

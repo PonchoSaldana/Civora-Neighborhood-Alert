@@ -1,5 +1,5 @@
-﻿import React, { useState } from 'react';
-import { ShieldCheck, AlertCircle, Eye, EyeOff, UserCheck, Ghost, ArrowRight, KeyRound } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, AlertCircle, Eye, EyeOff, UserCheck, Ghost, ArrowRight, KeyRound, Mail, CheckCircle2 } from 'lucide-react';
 import { UserSession, deriveRoleFromGroups } from '../context/AuthContext.js';
 import { authService } from '../services/auth.js';
 import { isAwsConfigured, isSocialEnabled } from '../config/aws.js';
@@ -37,6 +37,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
+
+  // Estado para confirmación de código de registro (Cognito CONFIRM_SIGN_UP)
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [confirmationCode, setConfirmationCode] = useState('');
+  const [confirmationSuccess, setConfirmationSuccess] = useState<string | null>(null);
 
   /* ── Login con Redes Sociales (oculto por defecto) ── */
   const handleSocialLogin = async (provider: 'Google' | 'Facebook') => {
@@ -180,15 +185,52 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
-  /* ── Registro de cuenta (solo activo en demo o con Cognito) ── */
-  const handleRegister = (e: React.FormEvent) => {
+  /* ── Registro de cuenta ── */
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setConfirmationSuccess(null);
+
     if (!name.trim()) { setError('Escribe tu nombre o apodo.'); return; }
     if (!email || !password) { setError('Completa todos los campos.'); return; }
     if (password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres.'); return; }
 
     setLoading(true);
+
+    if (isAwsConfigured) {
+      try {
+        const result = await authService.signUp(email.trim(), password, name.trim());
+        if (result.isSignUpComplete) {
+          // El usuario ya fue confirmado automáticamente
+          const session = await authService.getSession();
+          if (session?.user) {
+            const { role, hasNoRole } = deriveRoleFromGroups(session.user.groups || []);
+            onLogin({
+              sub: session.user.sub,
+              email: session.user.email,
+              displayName: name.trim() || session.user.email.split('@')[0],
+              role,
+              groups: session.user.groups || [],
+              mode: 'registered',
+              hasNoRole,
+              provider: 'cognito',
+            });
+            return;
+          }
+        }
+
+        // Requiere confirmación por código enviado a su correo
+        setNeedsConfirmation(true);
+        setConfirmationSuccess(`Te enviamos un código de verificación a ${email.trim()}.`);
+      } catch (err: any) {
+        setError(err.message || 'Error al crear la cuenta en Cognito.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Modo local / demo
     setTimeout(() => {
       onLogin({
         sub: `usr-${Date.now()}`,
@@ -203,7 +245,69 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }, 400);
   };
 
-  /* ── Entrar como invitado (solo en modo demo local) ── */
+  /* ── Confirmación de código de registro ── */
+  const handleConfirmSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!confirmationCode.trim()) {
+      setError('Ingresa el código de verificación que llegó a tu correo.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authService.confirmSignUp(email.trim(), confirmationCode.trim());
+      
+      // Tras confirmar, iniciamos sesión automáticamente
+      try {
+        const loginRes = await authService.signIn(email.trim(), password);
+        if (loginRes.step === 'DONE') {
+          const session = await authService.getSession();
+          const userObj = session?.user || loginRes.user;
+          if (userObj) {
+            const { role, hasNoRole } = deriveRoleFromGroups(userObj.groups || []);
+            onLogin({
+              sub: userObj.sub,
+              email: userObj.email,
+              displayName: name.trim() || userObj.email.split('@')[0],
+              role,
+              groups: userObj.groups || [],
+              mode: 'registered',
+              hasNoRole,
+              provider: 'cognito',
+            });
+            return;
+          }
+        }
+      } catch {
+        // Si el auto-login falla por alguna razón, lo cambiamos a la pestaña de login
+        setNeedsConfirmation(false);
+        setTab('login');
+        setConfirmationSuccess('Cuenta confirmada exitosamente. Ya puedes iniciar sesión.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error al validar el código.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ── Reenviar código de verificación ── */
+  const handleResendCode = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await authService.resendSignUpCode(email.trim());
+      setConfirmationSuccess('Se ha enviado un nuevo código a tu correo.');
+    } catch (err: any) {
+      setError(err.message || 'No se pudo reenviar el código.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ── Entrar como invitado ── */
   const handleGuest = () => {
     onLogin({
       sub: null,
@@ -344,45 +448,116 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 {loading ? 'Actualizando...' : 'Guardar contraseña y entrar'}
               </button>
             </form>
-          ) : (
-            <>
-              {/* En modo demo local, mostrar botón para entrar como invitado */}
-              {!isAwsConfigured && (
-                <button
-                  type="button"
-                  onClick={handleGuest}
-                  className="glass"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    marginBottom: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                    cursor: 'pointer',
-                    borderLeft: '4px solid var(--accent)',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Ghost size={20} color="var(--accent)" />
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>
-                        Entrar en modo demo
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Explora la interfaz con datos de demostración
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowRight size={16} color="var(--accent)" />
-                </button>
+          ) : needsConfirmation ? (
+            /* Formulario de confirmación de código de Cognito */
+            <form onSubmit={handleConfirmSignUp}>
+              <div style={{
+                background: 'var(--glass)',
+                borderLeft: '4px solid var(--accent)',
+                padding: '12px',
+                borderRadius: 'var(--radius-sm)',
+                marginBottom: '16px',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--text)',
+              }}>
+                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <Mail size={14} /> Verifica tu correo
+                </div>
+                {confirmationSuccess || `Ingresa el código de 6 dígitos que enviamos a ${email}.`}
+              </div>
+
+              {error && (
+                <div role="alert" style={{
+                  background: 'var(--danger)', color: '#fff',
+                  padding: '8px 12px', borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--text-xs)', marginBottom: '14px',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                }}>
+                  <AlertCircle size={15} /> {error}
+                </div>
               )}
 
-              {/* Tabs Login / Registro (en demo) */}
-              {!isAwsConfigured && (
-                <div style={{
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label htmlFor="auth-conf-code" className="form-label" style={{ fontSize: 'var(--text-xs)' }}>
+                  Código de verificación
+                </label>
+                <input
+                  id="auth-conf-code"
+                  type="text"
+                  className="form-input"
+                  style={{ height: '42px', fontSize: 'var(--text-lg)', textAlign: 'center', letterSpacing: '4px', fontWeight: 600 }}
+                  placeholder="123456"
+                  maxLength={10}
+                  value={confirmationCode}
+                  onChange={(e) => setConfirmationCode(e.target.value)}
+                  autoComplete="one-time-code"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary"
+                style={{ width: '100%', height: '42px', fontSize: 'var(--text-sm)', marginBottom: '12px' }}
+              >
+                {loading ? 'Verificando...' : 'Confirmar cuenta y entrar'}
+              </button>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={loading}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--accent)', fontSize: 'var(--text-xs)', cursor: 'pointer', padding: 0 }}
+                >
+                  ¿No recibiste el código? Reenviar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setNeedsConfirmation(false); setError(null); }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: 'var(--text-xs)', cursor: 'pointer', padding: 0 }}
+                >
+                  Regresar
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              {/* Botón para entrar como invitado (siempre visible) */}
+              <button
+                type="button"
+                onClick={handleGuest}
+                className="glass"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  cursor: 'pointer',
+                  borderLeft: '4px solid var(--accent)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Ghost size={20} color="var(--accent)" />
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>
+                      Entrar como invitado
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Explorar sin iniciar sesión (acceso limitado)
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight size={16} color="var(--accent)" />
+              </button>
+
+              {/* Tabs Login / Registro (siempre visibles) */}
+              <div style={{
                   display: 'grid', gridTemplateColumns: '1fr 1fr',
                   background: 'var(--glass)', borderRadius: 'var(--radius-sm)',
                   padding: '3px', marginBottom: '16px', gap: '4px',
@@ -403,7 +578,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     </button>
                   ))}
                 </div>
-              )}
 
               {/* Mensaje de Error */}
               {error && (
@@ -419,7 +593,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
               {/* Formulario Correo / Contraseña */}
               <form onSubmit={tab === 'login' ? handleLogin : handleRegister}>
-                {!isAwsConfigured && tab === 'register' && (
+                {tab === 'register' && (
                   <div className="form-group" style={{ marginBottom: '12px' }}>
                     <label htmlFor="reg-name" className="form-label" style={{ fontSize: 'var(--text-xs)' }}>Nombre o apodo</label>
                     <input

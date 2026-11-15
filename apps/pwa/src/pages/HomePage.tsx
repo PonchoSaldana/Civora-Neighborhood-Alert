@@ -8,7 +8,7 @@ import { SyncBanner } from '../components/SyncBanner.js';
 import { useAuth } from '../context/AuthContext.js';
 
 export const HomePage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchArea, setSearchArea] = useState<string>('');
@@ -20,7 +20,7 @@ export const HomePage: React.FC = () => {
     try {
       const data = await api.getIncidents({ areaId: searchArea || undefined });
       setIncidents(data);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
     } finally {
       setLoading(false);
@@ -82,10 +82,8 @@ export const HomePage: React.FC = () => {
           <section style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <h1 style={{ fontSize: 'var(--text-xl)', marginBottom: '4px' }}>
-                Incidentes en tu comunidad
               </h1>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                Consulta reportes cercanos o confirma incidentes existentes para evitar duplicados.
               </p>
             </div>
 
@@ -167,6 +165,30 @@ export const HomePage: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Banner informativo solo si es invitado */}
+          {isGuest && (
+            <div
+              className="glass"
+              style={{
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                borderLeft: '4px solid var(--accent)'
+              }}
+            >
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                <strong style={{ color: 'var(--text)' }}>Modo invitado:</strong> Estás viendo reportes comunitarios de demostración. Inicia sesión con tu cuenta para crear y sincronizar reportes reales con la red.
+              </div>
+              <Link to="/cuenta" className="btn-secondary" style={{ height: '32px', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                Iniciar sesión
+              </Link>
+            </div>
+          )}
 
           {/* Incidents List (Grid en escritorio) */}
           {loading ? (

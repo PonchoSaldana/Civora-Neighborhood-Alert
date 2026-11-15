@@ -13,10 +13,19 @@ import { MyIncidentsPage } from './pages/MyIncidentsPage.js';
 import { IncidentDetailPage } from './pages/IncidentDetailPage.js';
 import { AccountPage } from './pages/AccountPage.js';
 import { ManagerInboxPage } from './pages/ManagerInboxPage.js';
+import { PrivacyPage } from './pages/PrivacyPage.js';
+import { DataDeletionPage } from './pages/DataDeletionPage.js';
 
 const AppRoutes: React.FC = () => {
-  const { user, setUser, logout, isAdmin, isRegistered, hasNoRole, loading } = useAuth();
+  const { user, setUser, logout, isAdmin, isGuest, isRegistered, hasNoRole, loading } = useAuth();
+  // `sessionChosen`: true cuando el usuario eligió cómo entrar (login real o invitado).
+  // Siempre arranca en false → muestra el login. Solo se pone en true al hacer clic
+  // en "Iniciar sesión" / "Entrar como invitado", o cuando Cognito restaura sesión.
+  const [sessionChosen, setSessionChosen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Limpiar cualquier valor residual de sessionStorage de versiones anteriores
+  useEffect(() => { sessionStorage.removeItem('civora_chosen'); }, []);
 
   // Escuchar evento de token expirado o petición 401 que requiera autenticación
   useEffect(() => {
@@ -28,6 +37,14 @@ const AppRoutes: React.FC = () => {
       window.removeEventListener('civora:auth_required', handleAuthRequired);
     };
   }, []);
+
+  // Cuando Cognito restaura una sesión automáticamente, marcar como elegida
+  useEffect(() => {
+    if (isRegistered) {
+      setSessionChosen(true);
+      sessionStorage.setItem('civora_chosen', '1');
+    }
+  }, [isRegistered]);
 
   // Pantalla de carga mientras se valida la sesión real de Cognito
   if (loading) {
@@ -58,20 +75,30 @@ const AppRoutes: React.FC = () => {
     );
   }
 
-  // En modo AWS: el acceso exige login real (la API rechaza anónimos con 401).
-  // En modo DEMO: se muestra LoginPage si no ha iniciado sesión ni elegido invitado.
-  const hasDemoSession = !isAwsConfigured && !!localStorage.getItem('civora_logged_in');
-  const needsLogin = (isAwsConfigured && !isRegistered) || (!isAwsConfigured && !hasDemoSession) || showLoginModal;
+  // Muestra LoginPage si el usuario aún no eligió cómo entrar (o se forzó la modal).
+  const needsLogin = !sessionChosen || showLoginModal;
+  console.log('[Civora App] render state:', { sessionChosen, showLoginModal, needsLogin, loading, isRegistered, isGuest });
 
   if (needsLogin) {
     return (
-      <LoginPage
-        onLogin={(session: UserSession) => {
-          setUser(session);
-          localStorage.setItem('civora_logged_in', '1');
-          setShowLoginModal(false);
-        }}
-      />
+      <Routes>
+        {/* Páginas públicas accesibles sin sesión */}
+        <Route path="/privacidad" element={<PrivacyPage />} />
+        <Route path="/eliminar-datos" element={<DataDeletionPage />} />
+        <Route
+          path="/*"
+          element={
+            <LoginPage
+              onLogin={(session: UserSession) => {
+                setUser(session);
+                localStorage.setItem('civora_logged_in', '1');
+                setSessionChosen(true);
+                setShowLoginModal(false);
+              }}
+            />
+          }
+        />
+      </Routes>
     );
   }
 
@@ -80,7 +107,8 @@ const AppRoutes: React.FC = () => {
       <Header
         onLogout={async () => {
           await logout();
-          setShowLoginModal(true);
+          setSessionChosen(false);
+          setShowLoginModal(false);
         }}
       />
 
@@ -131,7 +159,9 @@ const AppRoutes: React.FC = () => {
               <AccountPage
                 onLogout={async () => {
                   await logout();
-                  setShowLoginModal(true);
+                  sessionStorage.removeItem('civora_chosen');
+                  setSessionChosen(false);
+                  setShowLoginModal(false);
                 }}
                 onOpenLogin={() => setShowLoginModal(true)}
               />
@@ -147,6 +177,10 @@ const AppRoutes: React.FC = () => {
             path="/bandeja"
             element={isAdmin ? <ManagerInboxPage /> : <Navigate to="/" replace />}
           />
+
+          {/* Páginas públicas legales */}
+          <Route path="/privacidad" element={<PrivacyPage />} />
+          <Route path="/eliminar-datos" element={<DataDeletionPage />} />
 
           {/* Redirección por defecto a inicio */}
           <Route path="*" element={<Navigate to="/" replace />} />

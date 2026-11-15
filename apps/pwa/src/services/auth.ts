@@ -1,4 +1,4 @@
-﻿// Servicio de autenticación con AWS Cognito (Amplify v6) o modo demo local
+// Servicio de autenticación con AWS Cognito (Amplify v6) o modo demo local
 import { isAwsConfigured, isSocialEnabled } from '../config/aws.js';
 
 export interface AuthUser {
@@ -15,6 +15,19 @@ export type AuthSignInStep =
   | 'CONFIRM_SIGN_IN_WITH_SMS_CODE'
   | 'RESET_PASSWORD';
 
+export interface SignUpResult {
+  isSignUpComplete: boolean;
+  userId?: string;
+  nextStep: {
+    signUpStep: 'CONFIRM_SIGN_UP' | 'DONE' | 'COMPLETE_AUTO_SIGN_IN';
+    codeDeliveryDetails?: {
+      destination?: string;
+      deliveryMedium?: string;
+      attributeName?: string;
+    };
+  };
+}
+
 export interface SignInResult {
   step: AuthSignInStep;
   user?: AuthUser;
@@ -25,8 +38,8 @@ export interface SignInResult {
 async function getAmplifyAuth() {
   if (!isAwsConfigured) return null;
   try {
-    const { fetchAuthSession, signIn, confirmSignIn, signOut, signInWithRedirect } = await import('aws-amplify/auth');
-    return { fetchAuthSession, signIn, confirmSignIn, signOut, signInWithRedirect };
+    const { fetchAuthSession, signIn, confirmSignIn, signOut, signInWithRedirect, signUp, confirmSignUp, resendSignUpCode } = await import('aws-amplify/auth');
+    return { fetchAuthSession, signIn, confirmSignIn, signOut, signInWithRedirect, signUp, confirmSignUp, resendSignUpCode };
   } catch (err) {
     console.warn('[Civora] Error al cargar módulo aws-amplify/auth:', err);
     return null;
@@ -218,5 +231,101 @@ export const authService = {
     return amplify.signInWithRedirect({
       provider: provider as any,
     });
+  },
+
+  /**
+   * Registra una nueva cuenta en Amazon Cognito
+   */
+  async signUp(email: string, password: string, name?: string): Promise<SignUpResult> {
+    const amplify = await getAmplifyAuth();
+    if (!amplify) throw new Error('AWS no está configurado.');
+
+    try {
+      const output = await amplify.signUp({
+        username: email.trim(),
+        password,
+        options: {
+          userAttributes: {
+            email: email.trim(),
+            ...(name?.trim() ? { name: name.trim() } : {}),
+          },
+          autoSignIn: true,
+        },
+      });
+
+      return {
+        isSignUpComplete: output.isSignUpComplete,
+        userId: output.userId,
+        nextStep: {
+          signUpStep: output.nextStep.signUpStep as any,
+          codeDeliveryDetails: (output.nextStep as any).codeDeliveryDetails,
+        },
+      };
+    } catch (err: any) {
+      const errorName = err?.name || '';
+      const errorMessage = err?.message || '';
+
+      if (errorName === 'UsernameExistsException') {
+        throw new Error('Ya existe una cuenta registrada con este correo electrónico.');
+      }
+      if (errorName === 'InvalidPasswordException') {
+        throw new Error('La contraseña no cumple con los requisitos de seguridad (mínimo 8 caracteres, números o símbolos).');
+      }
+      if (errorName === 'InvalidParameterException') {
+        throw new Error('Por favor revisa que el correo y la contraseña tengan un formato válido.');
+      }
+      if (errorName === 'NetworkError' || errorMessage.includes('Network') || errorMessage.includes('fetch')) {
+        throw new Error('No se pudo conectar con el servicio de autenticación. Verifica tu conexión a internet.');
+      }
+
+      throw new Error(err.message || 'Error al registrar la cuenta.');
+    }
+  },
+
+  /**
+   * Confirma el registro de usuario en Cognito con el código enviado por correo
+   */
+  async confirmSignUp(email: string, code: string): Promise<boolean> {
+    const amplify = await getAmplifyAuth();
+    if (!amplify) throw new Error('AWS no está configurado.');
+
+    try {
+      const output = await amplify.confirmSignUp({
+        username: email.trim(),
+        confirmationCode: code.trim(),
+      });
+
+      return output.isSignUpComplete;
+    } catch (err: any) {
+      const errorName = err?.name || '';
+
+      if (errorName === 'CodeMismatchException') {
+        throw new Error('El código de verificación es incorrecto.');
+      }
+      if (errorName === 'ExpiredCodeException') {
+        throw new Error('El código de verificación ha expirado. Solicita un nuevo código.');
+      }
+      if (errorName === 'NotAuthorizedException') {
+        throw new Error('El usuario ya ha sido confirmado previamente.');
+      }
+
+      throw new Error(err.message || 'Error al confirmar el código.');
+    }
+  },
+
+  /**
+   * Reenvía el código de confirmación de registro
+   */
+  async resendSignUpCode(email: string): Promise<void> {
+    const amplify = await getAmplifyAuth();
+    if (!amplify) throw new Error('AWS no está configurado.');
+
+    try {
+      await amplify.resendSignUpCode({
+        username: email.trim(),
+      });
+    } catch (err: any) {
+      throw new Error(err.message || 'Error al reenviar el código de verificación.');
+    }
   },
 };

@@ -37,9 +37,13 @@ export const MapPage: React.FC = () => {
 
   // 1. Cargar incidentes
   useEffect(() => {
-    api.getIncidents().then((list) => {
-      setIncidents(list);
-    });
+    api.getIncidents()
+      .then((list) => {
+        setIncidents(list);
+      })
+      .catch((e) => {
+        console.warn('[MapPage] No se pudieron cargar incidentes (modo invitado o red):', e.message);
+      });
   }, []);
 
   // 2. Inicializar mapa Leaflet

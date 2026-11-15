@@ -212,8 +212,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
               </div>
             )}
 
-            {/* Detalles de Cognito en modo AWS */}
-            {isAwsConfigured && !isGuest && (
+            {/* Detalles de la cuenta */}
+            {!isGuest && user.email && (
               <div style={{
                 background: 'var(--glass)',
                 padding: '12px',
@@ -224,19 +224,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
                 flexDirection: 'column',
                 gap: '6px'
               }}>
-                {user.email && (
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Mail size={14} /> Correo: <strong style={{ color: 'var(--text)' }}>{user.email}</strong>
-                  </div>
-                )}
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <ShieldCheck size={14} /> Grupos Cognito: <strong style={{ color: 'var(--text)' }}>{user.groups && user.groups.length > 0 ? user.groups.join(', ') : 'Ninguno'}</strong>
+                  <Mail size={14} /> Correo: <strong style={{ color: 'var(--text)' }}>{user.email}</strong>
                 </div>
-                {user.sub && (
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Key size={12} /> ID Usuario: <code style={{ fontSize: '10px' }}>{user.sub}</code>
-                  </div>
-                )}
               </div>
             )}
 

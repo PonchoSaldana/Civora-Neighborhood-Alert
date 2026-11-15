@@ -116,15 +116,23 @@ class IncidentApiService {
   async getIncidents(params?: { status?: IncidentStatus; areaId?: string; mine?: boolean; userSub?: string | null }): Promise<Incident[]> {
     // ── Modo AWS real ──────────────────────────────────────────────────────
     if (USE_AWS) {
-      if (params?.mine) {
-        const res = await remoteApi.getMyIncidents();
+      try {
+        if (params?.mine) {
+          const res = await remoteApi.getMyIncidents();
+          return (res.items as Incident[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        }
+        const qp: Record<string, string> = {};
+        if (params?.status) qp.status = params.status;
+        if (params?.areaId) qp.areaId = params.areaId;
+        const res = await remoteApi.getIncidents(qp);
         return (res.items as Incident[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      } catch (err: any) {
+        // En modo invitado (o sin sesión en AWS que produce 401), entregar siempre los datos de muestra
+        let results = [...SYNTHETIC];
+        if (params?.status) results = results.filter(i => i.status === params.status);
+        if (params?.areaId) results = results.filter(i => i.areaId.toLowerCase().includes(params.areaId!.toLowerCase()));
+        return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       }
-      const qp: Record<string, string> = {};
-      if (params?.status) qp.status = params.status;
-      if (params?.areaId) qp.areaId = params.areaId;
-      const res = await remoteApi.getIncidents(qp);
-      return (res.items as Incident[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
     // ── Modo demo local ────────────────────────────────────────────────────
@@ -145,8 +153,14 @@ class IncidentApiService {
   async getIncidentById(id: string): Promise<Incident | null> {
     // ── Modo AWS real ──────────────────────────────────────────────────────
     if (USE_AWS) {
-      const inc = await remoteApi.getIncidentById(id);
-      return inc as Incident;
+      try {
+        const inc = await remoteApi.getIncidentById(id);
+        return inc as Incident;
+      } catch (err: any) {
+        const inc = SYNTHETIC.find(i => i.id === id) || null;
+        if (!inc) return null;
+        return { ...inc, comments: SYNTHETIC_COMMENTS[id] || [] };
+      }
     }
     // ── Modo demo local ────────────────────────────────────────────────────
     const inc = this.incidents.find(i => i.id === id) || null;

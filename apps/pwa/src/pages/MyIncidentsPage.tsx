@@ -18,14 +18,17 @@ export const MyIncidentsPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [remoteIncidents, localDrafts] = await Promise.all([
-        api.getIncidents({ mine: true, userSub: user.sub }),
-        offlineDb.getAllDrafts()
-      ]);
-      setIncidents(remoteIncidents);
+      const localDrafts = await offlineDb.getAllDrafts();
       setDrafts(localDrafts);
-    } catch (e) {
-      console.error(e);
+
+      if (user.mode === 'registered' && user.sub) {
+        const remoteIncidents = await api.getIncidents({ mine: true, userSub: user.sub });
+        setIncidents(remoteIncidents);
+      } else {
+        setIncidents([]);
+      }
+    } catch (e: any) {
+      console.warn('[MyIncidentsPage] Error al cargar incidentes:', e?.message);
     } finally {
       setLoading(false);
     }

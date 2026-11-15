@@ -1,4 +1,4 @@
-﻿/**
+/**
  * apiClient.ts — Cliente HTTP para la API de Civora en AWS API Gateway
  *
  * Funciona en dos modos automáticamente:
@@ -47,12 +47,15 @@ export async function apiFetch<T = unknown>(
   if (!response.ok) {
     let errorMsg = `HTTP ${response.status}`;
     if (response.status === 401) {
-      if (typeof window !== 'undefined') {
+      // Solo forzar login si el usuario tenía una sesión que expiró.
+      // Los usuarios en modo invitado no son redirigidos forzosamente al login,
+      // para que puedan navegar en la app sin loops infinitos.
+      if (jwt && typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('civora:auth_required'));
       }
       errorMsg = jwt
         ? 'Tu sesión expiró o no es válida. Vuelve a iniciar sesión.'
-        : 'Necesitas iniciar sesión con tu cuenta para continuar.';
+        : 'Inicia sesión con tu cuenta para acceder a esta información.';
     }
     try {
       const body = await response.json();

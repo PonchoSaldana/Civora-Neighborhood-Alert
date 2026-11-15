@@ -434,9 +434,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onLogout, onOpenLogin 
             <h2 style={{ fontSize: 'var(--text-md)', marginBottom: '6px' }}>
               Civora — Alerta Vecinal
             </h2>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
               Plataforma comunitaria de reporte y seguimiento de incidentes en tu colonia.
-              {isAwsConfigured ? ' Conectado a AWS Cloud (us-east-2).' : ' Modo demostración local.'}
             </p>
           </section>
         </div>
